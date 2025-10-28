@@ -94,7 +94,7 @@ function Admindashboard() {
               Dashboard
             </h3>
           </div>
-          <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-50">
+          <div className="absolute top-2 sm:top-4 right-2 sm:right-4 z-50">
             <Icons />
           </div>
         </div>

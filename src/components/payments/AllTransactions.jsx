@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FaRupeeSign,
@@ -33,9 +33,9 @@ const AllTransactions = () => {
     queryKey: ["products"],
     queryFn: getProducts,
   });
+  
   const products = productData?.getProduct || [];
 
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [filters, setFilters] = useState({
     customer: "",
     status: "",
@@ -45,12 +45,19 @@ const AllTransactions = () => {
     endDate: "",
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  const filteredTransactions = useMemo(() => {
     let filtered = [...allTransactions];
 
     if (filters.customer) {
       filtered = filtered.filter((t) =>
-        t.payment.customer?.name
+        t.payment?.customer?.name
           ?.toLowerCase()
           .includes(filters.customer.toLowerCase())
       );
@@ -58,6 +65,7 @@ const AllTransactions = () => {
 
     if (filters.status) {
       filtered = filtered.filter((t) => {
+        if (!t.payment) return false;
         const { totalPaid, totalAmount, dueDate } = t.payment;
         const now = new Date();
         const due = totalAmount - totalPaid;
@@ -74,13 +82,13 @@ const AllTransactions = () => {
 
     if (filters.paymentMode) {
       filtered = filtered.filter(
-        (t) => t.paymentMode.toLowerCase() === filters.paymentMode.toLowerCase()
+        (t) => t.paymentMode?.toLowerCase() === filters.paymentMode.toLowerCase()
       );
     }
 
     if (filters.product) {
       filtered = filtered.filter(
-        (t) => t.payment.product?._id === filters.product
+        (t) => t.payment?.product?._id === filters.product
       );
     }
 
@@ -95,8 +103,12 @@ const AllTransactions = () => {
       );
     }
 
-    setFilteredTransactions(filtered);
+    return filtered;
   }, [allTransactions, filters]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
 
   if (isLoading)
     return (
@@ -181,6 +193,13 @@ const AllTransactions = () => {
         />
       </div>
 
+      {/* Pagination Info */}
+      {filteredTransactions.length > 0 && (
+        <div className="mb-4 text-sm text-gray-600">
+          Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} transactions
+        </div>
+      )}
+
       {/* Transactions Table */}
       <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
@@ -211,7 +230,40 @@ const AllTransactions = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredTransactions.length > 0 ? (
-              filteredTransactions.map((txn) => {
+              paginatedTransactions.map((txn) => {
+                if (!txn.payment) {
+                  return (
+                    <tr
+                      key={txn._id}
+                      className="hover:bg-gray-50/50 transition-colors duration-150"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        N/A
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        N/A
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(txn.transactionDate).toLocaleDateString("en-GB")}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-green-600 font-semibold text-right">
+                        {formatCurrency(txn.paidAmount)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {txn.paymentMode}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {txn.transactionRecordBy?.name || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="mr-1.5"><FaTimesCircle /></span>
+                          Unknown
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }
                 const { totalPaid, totalAmount, dueDate } = txn.payment;
                 const due = totalAmount - totalPaid;
                 const now = new Date();
@@ -284,6 +336,35 @@ const AllTransactions = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-6 space-x-2">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+          >
+            Previous
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-4 py-2 rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };

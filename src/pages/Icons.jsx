@@ -122,7 +122,7 @@ function Icons() {
   }
 
   return (
-    <div className='relative flex items-center gap-4 text-black text-xl bg-white rounded-2xl shadow-md p-3'>
+    <div className='relative flex items-center gap-2 sm:gap-4 text-black text-lg sm:text-xl bg-white rounded-2xl shadow-md p-2 sm:p-3'>
       <AnimatePresence>
         {!metadatauser && showdropdown && (
           <motion.div
