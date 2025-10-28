@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getProductPaymentDetails } from "../../services/paymentstatusRouter";
-import PaymentDetails from "./paymentDetails";
+import PaymentDetails from "./PaymentDetails";
 import PaymentAddModel from "./PaymentAddModel";
 import AllTransactions from "./AllTransactions";
 

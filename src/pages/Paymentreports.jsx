@@ -1,6 +1,6 @@
 import Paymentprogresschart from "../components/Paymentprogresschart";
 import Icons from "./Icons";
-import PaymentDetails from "../components/payments/paymentDetails";
+import PaymentDetails from "../components/payments/PaymentDetails";
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FaBars } from "react-icons/fa";

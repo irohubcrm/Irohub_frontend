@@ -13,10 +13,12 @@ import Agenttask from './pages/Agenttask';
 import Settings from './pages/Settings';
 import Protectedroute from './pages/Protectedroute';
 import Paymentreports from './pages/Paymentreports';
-import PaymentDetails from './components/payments/paymentDetails';
+
 import PaymentAddModel from './components/payments/PaymentAddModel';
 import ProductPaymentDetails from './components/payments/ProductPaymentDetails';
 import PaymentReportSide from './pages/PaymentReportSide';
+import PaymentDetails from './components/payments/PaymentDetails.jsx';
+
 
 
 
