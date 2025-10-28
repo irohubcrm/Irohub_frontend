@@ -57,7 +57,7 @@ import {
   getPermissionSettings,
   updatePermissionSettings,
 } from "../services/settingservices/permissionSettingsRouter";
-import Gstmodal from "../components/settingscomponents/gstmodal";
+import Gstmodal from "../components/settingscomponents/Gstmodal";
 import Gsteditmodal from "../components/settingscomponents/Gsteditmodal";
 import { deleteleadsettingsformfields, listleadsettingsformfields, updateactiveformfields } from "../services/settingservices/leadFormFieldsSettingsRouter";
 
