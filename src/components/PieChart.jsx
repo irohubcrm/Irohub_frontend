@@ -65,7 +65,7 @@ const LeadStatusPieChart = () => {
 
     const statusCounts = {};
     statuses.forEach(status => {
-        statusCounts[status] = 0;
+        statusCounts[status] = null;
     });
 
     // Process all leads
@@ -102,7 +102,7 @@ const LeadStatusPieChart = () => {
                 callbacks: {
                     label: context => {
                         const label = context.label || "";
-                        const value = context.raw || 0;
+                        const value = context.raw || 0 || null;
                         return `${label}: ${value}`;
                     }
                 }

@@ -13,6 +13,7 @@ import { listleads } from '../services/leadsRouter';
 import { listtask } from '../services/tasksRouter';
 import Icons from './Icons';
 import Spinner from '../components/Spinner';
+import LeadStatusPieChart from '../components/PieChart';
 
 function Admindashboard() {
   const queryClient = useQueryClient();
@@ -66,7 +67,7 @@ function Admindashboard() {
 
   return (
     <div className="flex h-screen w-screen bg-gray-100 overflow-x-hidden">
-      <div className="fixed inset-y-0 left-0 z-40">
+      <div className="fixed inset-y-0 left-0 z-20">
         <motion.div
           animate={{ x: sidebarVisible ? 0 : -260 }}
           transition={{ duration: 0.3 }}
@@ -312,7 +313,7 @@ function Admindashboard() {
             >
               <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Lead Status Chart</h4>
               <div className="w-full h-auto">
-                <LeadStatusDonutChart />
+                <LeadStatusPieChart />
               </div>
             </motion.div>
           </div>
