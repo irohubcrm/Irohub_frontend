@@ -1,5 +1,4 @@
-
-export const API_URL = "https://irohub-backend-1.onrender.com"
+export const API_URL = import.meta.env.VITE_BACKEND_URL
 
 export const getAuthorized = (additionalHeaders = {}) => {
     const user = sessionStorage.getItem('metadataUser') || '{}'

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { NavLink, useNavigate } from "react-router-dom";
 import { logoutaction } from "../redux/authSlice";
 import {
   FaAddressBook,
@@ -26,6 +26,7 @@ function Sidebar() {
   const role = useSelector((state) => state.auth.role);
   const metadata = useSelector((state) => state.auth.metadataUser);
   const effectiveRole = metadata?.role || role;
+
   const [isOpen, setIsOpen] = useState(false);
 
   const logoutpage = () => {
@@ -33,9 +34,15 @@ function Sidebar() {
     navigate("/");
   };
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
 
-  const { data: permissionData } = useQuery({
+  const {
+    data: permissionData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["permissionToAccess"],
     queryFn: acessPermission,
   });
@@ -43,188 +50,437 @@ function Sidebar() {
   const hideLeadDetails = permissionData?.getPermission?.find(
     (perm) => perm.title === "Hide lead details form agent"
   );
+
   const displayLeadDetails = permissionData?.getPermission?.find(
     (perm) => perm.title === "Display all leads for every staff member"
   );
+
   const displayCustomerDetails = permissionData?.getPermission?.find(
     (perm) => perm.title === "Display all customers for every staff member"
   );
 
   return (
     <>
-      {/* ☰ Mobile Toggle Button */}
       <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-teal-600 text-white rounded-md shadow-md hover:bg-teal-700 transition"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[#00B5A6] text-white rounded-md"
         onClick={toggleSidebar}
       >
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Overlay for mobile */}
+      {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-opacity-50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black opacity-50 z-30 lg:hidden"
           onClick={toggleSidebar}
         ></div>
       )}
 
-      {/* 🧭 Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-48 lg:w-64
-  bg-gradient-to-b from-teal-500 to-blue-600 text-white shadow-xl
-  overflow-y-auto
-  [scrollbar-width:thin] [scrollbar-color:#14b8a6_#1E3A8A]
-  [&::-webkit-scrollbar]:w-2
-  [&::-webkit-scrollbar-track]:bg-blue-900/30
-  [&::-webkit-scrollbar-thumb]:bg-teal-400
-  [&::-webkit-scrollbar-thumb]:rounded-full
-  [&::-webkit-scrollbar-thumb:hover]:bg-cyan-400
-  transition-transform duration-300 ease-in-out z-40
-  ${isOpen ? "translate-x-0" : "-translate-x-full"}
-  lg:translate-x-0`}
+        className={`fixed top-0 left-0 h-screen ${
+          effectiveRole !== role && role === "Admin"
+            ? "bg-gray-700"
+            : "bg-gradient-to-b from-[#00B5A6] to-[#1E6DB0]"
+        } text-white shadow-lg transition-transform duration-300 ease-in-out z-40
+                ${
+                  isOpen ? "translate-x-0" : "-translate-x-full"
+                } lg:translate-x-0 w-full sm:w-64`}
       >
-        {/* Header */}
-        <div className="p-6 text-center font-extrabold text-3xl border-b border-white/30 flex justify-center items-center space-x-2">
+        <div className="p-4 sm:p-6 text-center font-extrabold text-2xl sm:text-3xl lg:text-4xl border-b border-white/30 flex justify-center items-center space-x-2">
           <motion.span
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-blue-100 to-cyan-300 text-transparent bg-clip-text font-serif"
+            transition={{ duration: 0.5 }}
+            className="bg-gradient-to-r from-blue-200 to-cyan-400 text-transparent bg-clip-text font-serif drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]"
           >
             Irohub
           </motion.span>
           <motion.span
-            className="relative text-yellow-300 font-mono"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="relative text-yellow-300 font-mono drop-shadow-md"
           >
             CRM
             <motion.div
               layoutId="underline"
               className="absolute left-0 right-0 -bottom-1 h-[3px] bg-yellow-400 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 0.4, delay: 0.6 }}
             />
           </motion.span>
         </div>
-
-        {/* Sidebar Menu */}
-        <ul className="space-y-2 p-4">
+        <ul className="space-y-2 p-2 sm:p-4">
           {effectiveRole === "Admin" && (
             <>
-              <SidebarLink
-                to="/admindashboard"
-                icon={<FaTachometerAlt />}
-                text="Dashboard"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/agents"
-                icon={<FaUserFriends />}
-                text="Staffs"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/leads"
-                icon={<FaAddressBook />}
-                text="Leads"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/followups"
-                icon={<FaBook />}
-                text="Followups"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/customers"
-                icon={<FaUsers />}
-                text="Customers"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/tasks"
-                icon={<FaTasks />}
-                text="Tasks"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/payments"
-                icon={<FaDollarSign />}
-                text="Payments"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/paymentReports"
-                icon={<FaDollarSign />}
-                text="Payment Reports"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/subadminreports"
-                icon={<FaChartBar />}
-                text="Reports"
-                close={setIsOpen}
-              />
+              <li>
+                <NavLink
+                  to="/admindashboard"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaTachometerAlt className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Dashboard
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/agents"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaUserFriends className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Staffs
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/leads"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaAddressBook className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Leads
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/followups"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaBook className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Followups
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/customers"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaUsers className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Customers
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/tasks"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaTasks className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Tasks
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/payments"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaDollarSign className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Payments
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/paymentReports"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 rounded-lg text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaDollarSign className="mr-2 sm:mr-3 text-base sm:text-lg" />{" "}
+                  Payments Report
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/subadminreports"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaChartBar className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Reports
+                </NavLink>
+              </li>
             </>
           )}
+          {effectiveRole === "Sub-Admin" && (
+            <>
+              <li>
+                <NavLink
+                  to="/admindashboard"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaTachometerAlt className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Dashboard
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/staffs"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaUserFriends className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Staffs
+                </NavLink>
+              </li>
+              {displayLeadDetails && displayLeadDetails.active === true && (
+                <li>
+                  <NavLink
+                    to="/leads"
+                    className={({ isActive }) =>
+                      `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                        isActive ? "bg-blue-600" : ""
+                      }`
+                    }
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <FaAddressBook className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                    Leads
+                  </NavLink>
+                </li>
+              )}
 
+              <li>
+                <NavLink
+                  to="/followups"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaBook className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Followups
+                </NavLink>
+              </li>
+              {displayCustomerDetails &&
+                displayCustomerDetails.active === true && (
+                  <li>
+                    <NavLink
+                      to="/customers"
+                      className={({ isActive }) =>
+                        `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                          isActive ? "bg-blue-600" : ""
+                        }`
+                      }
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <FaUsers className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                      Customers
+                    </NavLink>
+                  </li>
+                )}
+
+              <li>
+                <NavLink
+                  to="/subadmintasks"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaTasks className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Tasks
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/payments"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaDollarSign className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Payments
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/subadminreports"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaChartBar className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Reports
+                </NavLink>
+              </li>
+            </>
+          )}
           {effectiveRole === "Agent" && (
             <>
-              <SidebarLink
-                to="/subadminhome"
-                icon={<FaTachometerAlt />}
-                text="Dashboard"
-                close={setIsOpen}
-              />
-              {displayLeadDetails?.active && (
-                <SidebarLink
-                  to="/leads"
-                  icon={<FaEnvelope />}
-                  text="Lead List"
-                  close={setIsOpen}
-                />
-              )}
-              <SidebarLink
-                to="/followups"
-                icon={<FaClock />}
-                text="Followups"
-                close={setIsOpen}
-              />
-              {displayCustomerDetails?.active && (
-                <SidebarLink
-                  to="/customers"
-                  icon={<FaUserFriends />}
-                  text="Customers"
-                  close={setIsOpen}
-                />
-              )}
-              <SidebarLink
-                to="/agenttasks"
-                icon={<FaTasks />}
-                text="Tasks"
-                close={setIsOpen}
-              />
-              <SidebarLink
-                to="/payments"
-                icon={<FaDollarSign />}
-                text="Payments"
-                close={setIsOpen}
-              />
+              <li>
+                <NavLink
+                  to="/subadminhome"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaTachometerAlt className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Dashboard
+                </NavLink>
+              </li>
+              
+              {hideLeadDetails &&
+                hideLeadDetails.active === false &&
+                displayLeadDetails &&
+                displayLeadDetails.active === true && (
+                  <li>
+                    <NavLink
+                      to="/leads"
+                      className={({ isActive }) =>
+                        `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold 
+                                            hover:bg-white/20 hover:text-gray-100 rounded-lg 
+                                            transform transition-transform duration-300 ease-in-out 
+                                            hover:scale-105 text-sm sm:text-base ${
+                                              isActive ? "bg-blue-600" : ""
+                                            }`
+                      }
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <FaEnvelope className="mr-2 sm:mr-3 text-base sm:text-lg" />{" "}
+                      Lead List
+                    </NavLink>
+                  </li>
+                )}
+
+              <li>
+                <NavLink
+                  to="/followups"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaClock className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Followups
+                </NavLink>
+              </li>
+              {displayCustomerDetails &&
+                displayCustomerDetails.active === true && (
+                  <li>
+                    <NavLink
+                      to="/customers"
+                      className={({ isActive }) =>
+                        `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                          isActive ? "bg-blue-600" : ""
+                        }`
+                      }
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <FaUserFriends className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                      Customers
+                    </NavLink>
+                  </li>
+                )}
+
+              <li>
+                <NavLink
+                  to="/agenttasks"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaTasks className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Tasks
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/payments"
+                  className={({ isActive }) =>
+                    `flex items-center py-2 sm:py-3 px-3 sm:px-4 text-white font-bold hover:bg-white/20 hover:text-gray-100 rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base ${
+                      isActive ? "bg-blue-600" : ""
+                    }`
+                  }
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FaDollarSign className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                  Payments
+                </NavLink>
+              </li>
             </>
           )}
-
-          {/* Logout */}
-          <li>
-            <button
-              onClick={() => {
-                logoutpage();
-                setIsOpen(false);
-              }}
-              className="flex items-center w-full py-3 px-4 font-bold hover:bg-red-600 rounded-md cursor-pointer transform transition hover:scale-105"
-            >
-              <FaSignOutAlt className="mr-3 text-lg" />
-              Logout
-            </button>
-          </li>
+          {!metadata && (
+            <li>
+              <button
+                className="flex items-center w-full py-2 sm:py-2 px-3 sm:px-4 font-bold hover:bg-red-600 rounded-md cursor-pointer transform transition-transform duration-300 ease-in-out hover:scale-105 text-sm sm:text-base"
+                onClick={() => {
+                  logoutpage();
+                  setIsOpen(false);
+                }}
+              >
+                <FaSignOutAlt className="mr-2 sm:mr-3 text-base sm:text-lg" />
+                Logout
+              </button>
+            </li>
+          )}
         </ul>
       </aside>
     </>
@@ -232,23 +488,3 @@ function Sidebar() {
 }
 
 export default Sidebar;
-
-// ✅ Reusable link component
-function SidebarLink({ to, icon, text, close }) {
-  return (
-    <li>
-      <NavLink
-        to={to}
-        className={({ isActive }) =>
-          `flex items-center py-3 px-4 font-bold rounded-lg transition-all duration-200
-          hover:bg-white/20 hover:text-gray-100 transform hover:scale-105
-          ${isActive ? "bg-blue-700" : ""}`
-        }
-        onClick={() => close(false)}
-      >
-        <span className="mr-3 text-lg">{icon}</span>
-        {text}
-      </NavLink>
-    </li>
-  );
-}
