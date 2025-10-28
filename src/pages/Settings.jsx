@@ -36,7 +36,7 @@ import Customerstatuseditmodal from "../components/settingscomponents/Customerst
 import Documentmodal from "../components/settingscomponents/Documentmodal";
 import Documenteditmodal from "../components/settingscomponents/Documenteditmodal";
 import ProductAddModal from "../components/settingscomponents/ProductAddModal";
-import ProductEditModal from "../components/settingscomponents/Producteditmodal";
+import ProductEditModal from "../components/settingscomponents/ProductEditModal";
 import {
   deletesettingsdocument,
   listsettingsdocument,
