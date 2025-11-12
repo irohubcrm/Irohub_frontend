@@ -11,17 +11,26 @@ import { listleadsourcesettings } from "../services/settingservices/leadSourceSe
 import Spinner from "./Spinner";
 import { getProducts } from "../services/paymentstatusRouter";
 
+// ✅ New Import
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/bootstrap.css";
+
 function Customermodal() {
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
 
   const [showsuccess, setshowsuccess] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("");
+  const [isValid, setIsValid] = useState(true);
 
+  // ✅ Fetch lead sources
   const fetchleadsource = useQuery({
     queryKey: ["List leadsource"],
     queryFn: listleadsourcesettings,
   });
 
+  // ✅ Fetch products
   const getProduct = useQuery({
     queryKey: ["get products"],
     queryFn: getProducts,
@@ -29,6 +38,7 @@ function Customermodal() {
 
   const getSelectedProduct = getProduct?.data?.getProduct;
 
+  // ✅ Mutation for adding customers
   const addingcustomers = useMutation({
     mutationKey: ["Add Leads"],
     mutationFn: addleads,
@@ -37,24 +47,34 @@ function Customermodal() {
     },
   });
 
+  // ✅ Validation schema
+  // ✅ Validation schema
   const customerformvalidation = Yup.object({
-    name: Yup.string().required("Name is mandatory"),
-    email: Yup.string().matches(
-      /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i,
-      "Invalid email format"
-    ),
+    name: Yup.string()
+      .required("Name is required")
+      .matches(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces")
+      .min(3, "Name must be at least 3 characters"),
+
+    email: Yup.string()
+      .required("Email is required")
+      .email("Invalid email format"),
+
     mobile: Yup.string()
-      .required("Mobile number is mandatory")
-      .matches(/^\d{10}$/, "Invalid mobile number"),
+      .required("Mobile number is required")
+      .matches(
+        /^\+?[1-9]\d{6,14}$/,
+        "Enter a valid international phone number (e.g., +14155552671)"
+      ),
+
+    countryCode: Yup.string().required("Country code is required"),
+
     source: Yup.string(),
     location: Yup.string(),
     requiredProductType: Yup.string(),
-    leadValue: Yup.string().matches(
-      /^\d+$/,
-      "Lead value must contain only digits"
-    ),
+    leadValue: Yup.number(),
   });
 
+  // ✅ Formik setup
   const customerForm = useFormik({
     initialValues: {
       name: "",
@@ -63,11 +83,24 @@ function Customermodal() {
       source: "",
       location: "",
       requiredProductType: "",
+      countryCode: "+91",
       leadValue: "",
     },
     validationSchema: customerformvalidation,
+
     onSubmit: async (values) => {
-      await addingcustomers.mutateAsync(values);
+      // 🧹 Ensure the number starts with '+'
+      let mobile = values.mobile.replace(/\s+/g, "");
+      if (!mobile.startsWith("+")) {
+        mobile = `${values.countryCode}${mobile}`;
+      }
+
+      // 🧹 Remove any accidental duplicate '+' or double code
+      mobile = mobile.replace(/\++/g, "+").replace(/(\+\d+)\1+/, "$1");
+
+      const payload = { ...values, mobile };
+
+      await addingcustomers.mutateAsync(payload);
       setshowsuccess(true);
       setTimeout(() => {
         dispatch(toggleCustomermodal());
@@ -75,6 +108,16 @@ function Customermodal() {
       }, 1000);
     },
   });
+
+  // ✅ Handle phone change dynamically
+  const handlePhoneChange = (value, country) => {
+    setPhone(value);
+    const dialCode = `+${country.dialCode}`;
+    setCountryCode(dialCode);
+
+    const cleaned = value.replace(/\s+/g, "");
+    customerForm.setFieldValue("mobile", cleaned);
+  };
 
   const filteredsource = fetchleadsource?.data?.getLeadsource?.filter(
     (source) => source.active
@@ -90,175 +133,174 @@ function Customermodal() {
         className="bg-white w-full max-w-md sm:max-w-lg md:max-w-3xl mx-auto rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden"
       >
         {fetchleadsource.isLoading && <Spinner />}
-        <div className="bg-gradient-to-b from-[#00B5A6] to-[#1E6DB0] w-full md:w-1/3 flex flex-col items-center justify-center p-4 sm:p-6 text-white">
-          <FaUserPlus className="text-5xl sm:text-6xl md:text-[80px] mb-3 sm:mb-4" />
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold">
-            Add New Lead
-          </h2>
-          <p className="text-xs sm:text-sm mt-2 text-center">
+
+        {/* Left Side Gradient */}
+        <div className="bg-gradient-to-b from-[#00B5A6] to-[#1E6DB0] w-full md:w-1/3 flex flex-col items-center justify-center p-6 text-white">
+          <FaUserPlus className="text-6xl md:text-[80px] mb-4" />
+          <h2 className="text-xl md:text-2xl font-bold">Add New Lead</h2>
+          <p className="text-sm mt-2 text-center">
             Fill in the customer details to generate a new lead.
           </p>
         </div>
-        <div className="relative w-full md:w-2/3 p-4 sm:p-6 md:p-8">
+
+        {/* Right Side Form */}
+        <div className="relative w-full md:w-2/3 p-6">
           <button
             onClick={() => dispatch(toggleCustomermodal())}
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 text-xl sm:text-2xl text-gray-400 hover:text-red-500 transition"
+            className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-red-500 transition"
           >
             &times;
           </button>
-          <h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 mb-3 sm:mb-4">
+
+          <h3 className="text-xl md:text-2xl font-semibold text-gray-800 mb-4">
             Lead Details
           </h3>
 
-          {addingcustomers.isPending && <Spinner />}
-          {addingcustomers.isError && (
-            <p className="text-red-600 bg-red-100 p-2 sm:p-3 rounded-md mb-3 sm:mb-4 text-sm sm:text-base">
-              {addingcustomers.error?.response?.data?.message}
-            </p>
-          )}
-
-          <form
-            onSubmit={customerForm.handleSubmit}
-            className="space-y-3 sm:space-y-4"
-          >
+          <form onSubmit={customerForm.handleSubmit} className="space-y-4">
+            {/* Name Field */}
             <div>
               <input
+                key="name"
                 type="text"
                 name="name"
-                value={customerForm.values.name}
                 {...customerForm.getFieldProps("name")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the name"
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
+                placeholder="Enter name"
               />
-              <span className="text-red-500 text-xs block mt-1">
-                * required
-              </span>
               {customerForm.touched.name && customerForm.errors.name && (
-                <p className="text-red-500 text-xs sm:text-sm mt-1">
+                <p className="text-red-500 text-sm mt-1">
                   {customerForm.errors.name}
                 </p>
               )}
             </div>
 
+            {/* ✅ Country Code + Mobile Field */}
             <div>
-              <input
-                type="text"
-                name="mobile"
-                value={customerForm.values.mobile}
-                {...customerForm.getFieldProps("mobile")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the mobile number"
+              <PhoneInput
+                country={"in"}
+                value={phone}
+                onChange={(value, country) => {
+                  // Always store full international format with '+'
+                  const formattedValue = `+${value.replace(/\s+/g, "")}`;
+
+                  setPhone(formattedValue);
+                  const dialCode = `+${country.dialCode}`;
+                  setCountryCode(dialCode);
+
+                  // Extract only the national number part
+                  const nationalNumber = formattedValue.replace(dialCode, "");
+
+                  // Validate length and format
+                  const regex = /^\d{6,15}$/;
+                  const valid = regex.test(nationalNumber);
+                  setIsValid(valid);
+
+                  // Save full formatted number in Formik
+                  customerForm.setFieldValue("mobile", formattedValue);
+                  customerForm.setFieldValue("countryCode", dialCode);
+                }}
+                enableSearch
+                inputClass="!w-full !pl-16 !pr-4 !py-3 !text-gray-800 !border !border-gray-300 !rounded-lg focus:!ring-2 focus:!ring-blue-400"
+                buttonClass="!border-gray-300 !bg-white !rounded-l-lg !p-3"
+                containerClass="!w-full"
+                dropdownClass="!text-gray-800"
+                placeholder="Enter phone number"
               />
-              <span className="text-red-500 text-xs block mt-1">
-                * required
-              </span>
-              {customerForm.touched.mobile && customerForm.errors.mobile && (
-                <p className="text-red-500 text-xs sm:text-sm mt-1">
-                  {customerForm.errors.mobile}
+
+              {!isValid && (
+                <p className="text-red-500 text-sm mt-2">
+                  ⚠️ Please enter a valid phone number for selected country
                 </p>
               )}
             </div>
 
+            {/* ✅ Email Field */}
             <div>
               <input
+                key="email"
                 type="email"
                 name="email"
-                value={customerForm.values.email}
                 {...customerForm.getFieldProps("email")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the email ID"
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
+                placeholder="Enter email (e.g. name@gmail.com)"
               />
               {customerForm.touched.email && customerForm.errors.email && (
-                <p className="text-red-500 text-xs sm:text-sm mt-1">
+                <p className="text-red-500 text-sm mt-1">
                   {customerForm.errors.email}
                 </p>
               )}
             </div>
 
+            {/* Source Dropdown */}
             <div>
               <select
+                key="source"
                 name="source"
-                value={customerForm.values.source}
                 {...customerForm.getFieldProps("source")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
               >
-                <option value="" label="Select Source" />
+                <option value="">Select Source</option>
                 {filteredsource?.map((source, index) => (
                   <option key={index} value={source.title}>
                     {source.title}
                   </option>
                 ))}
               </select>
-              {customerForm.touched.source && customerForm.errors.source && (
-                <p className="text-red-500 text-xs sm:text-sm mt-1">
-                  {customerForm.errors.source}
-                </p>
-              )}
             </div>
 
+            {/* Location */}
             <div>
               <input
+                key="location"
                 type="text"
                 name="location"
-                value={customerForm.values.location}
                 {...customerForm.getFieldProps("location")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the location"
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
+                placeholder="Enter location"
               />
-              {customerForm.touched.location &&
-                customerForm.errors.location && (
-                  <p className="text-red-500 text-xs sm:text-sm mt-1">
-                    {customerForm.errors.location}
-                  </p>
-                )}
             </div>
 
+            {/* Product */}
             <div>
               <select
+                key="requiredProductType"
                 name="requiredProductType"
-                value={customerForm.values.requiredProductType}
                 {...customerForm.getFieldProps("requiredProductType")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base text-black"
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
               >
                 <option value="">-- Select Product --</option>
-
-                {getSelectedProduct?.length > 0 &&
-                  getSelectedProduct.map((product) => {
-                    return (
-                      <option key={product._id} value={product._id}>
-                        {product.title}
-                      </option>
-                    );
-                  })}
+                {getSelectedProduct?.map((product) => (
+                  <option key={product._id} value={product._id}>
+                    {product.title}
+                  </option>
+                ))}
               </select>
             </div>
 
+            {/* Lead Value */}
             <div>
               <input
+                key="leadValue"
                 type="text"
                 name="leadValue"
-                value={customerForm.values.leadValue}
                 {...customerForm.getFieldProps("leadValue")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the lead value"
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
+                placeholder="Enter lead value"
               />
-              {customerForm.touched.leadValue &&
-                customerForm.errors.leadValue && (
-                  <p className="text-red-500 text-xs sm:text-sm mt-1">
-                    {customerForm.errors.leadValue}
-                  </p>
-                )}
             </div>
 
+            {/* Submit */}
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-3 rounded-lg font-semibold transition text-sm sm:text-base"
+              className="w-full py-3 rounded-lg font-semibold transition text-white bg-blue-600 hover:bg-blue-700"
             >
               Add Lead
             </button>
           </form>
         </div>
       </motion.div>
+
+      {/* ✅ Success Message */}
       <AnimatePresence>
         {showsuccess && (
           <motion.div

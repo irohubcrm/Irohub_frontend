@@ -29,6 +29,7 @@ export const modalslice = createSlice({
     isNotificationread: false,
     fullnotificationModal: false,
     uploadcsvModal: false,
+    selectedCustomer: null, 
   },
   reducers: {
     togglestaffmodal: (state) => {
@@ -113,6 +114,9 @@ export const modalslice = createSlice({
     toggleUploadcsvmodal: (state) => {
       state.uploadcsvModal = !state.uploadcsvModal;
     },
+    setSelectedCustomer: (state, action) => {
+      state.selectedCustomer = action.payload;
+    },
   },
 });
 
@@ -136,5 +140,6 @@ export const {
   toggleNotificationmodal,
   toggleFullnotificationmodal,
   toggleUploadcsvmodal,
+  setSelectedCustomer
 } = modalslice.actions;
 export default modalslice.reducer;

@@ -1,0 +1,72 @@
+
+// Hypothetical Mongoose/Express backend function for listleads
+
+// BEFORE
+const listleads = async (req, res) => {
+  const { page = 1, limit = 10, month } = req.query;
+
+  try {
+    const query = {};
+    if (month) {
+      const [year, monthStr] = month.split('-');
+      const startDate = new Date(year, parseInt(monthStr) - 1, 1);
+      const endDate = new Date(year, parseInt(monthStr), 0);
+      query.createdAt = { $gte: startDate, $lte: endDate };
+    }
+
+    const leads = await Lead.find(query)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+
+    const count = await Lead.countDocuments(query);
+
+    res.json({
+      leads,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+// AFTER
+const listleads = async (req, res) => {
+  const { page = 1, limit = 10, month, search } = req.query;
+
+  try {
+    const query = {};
+    if (month) {
+      const [year, monthStr] = month.split('-');
+      const startDate = new Date(year, parseInt(monthStr) - 1, 1);
+      const endDate = new Date(year, parseInt(monthStr), 0);
+      query.createdAt = { $gte: startDate, $lte: endDate };
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { mobile: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const leads = await Lead.find(query)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+
+    const count = await Lead.countDocuments(query);
+
+    res.json({
+      leads,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};

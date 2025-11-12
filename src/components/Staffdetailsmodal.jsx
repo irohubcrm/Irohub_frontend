@@ -1,287 +1,216 @@
-import React, { useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { toggleStaffdetailmodal } from '../redux/modalSlice'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { changepassword, profile_image } from '../services/staffRouter'
-import { useFormik } from 'formik'
-import * as Yup from 'yup'
-import { setImage } from '../redux/authSlice'
-import Spinner from './Spinner'
-import { AnimatePresence, motion } from 'framer-motion'
+import React from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { AnimatePresence, motion } from 'framer-motion';
+import { closeStaffDetailModal } from '../redux/staffDetailModalSlice';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTimes, faUser, faEnvelope, faPhone, faTasks, faClipboardList, faCheckCircle, faHourglassHalf, faChartLine, faUserTie, faUserCog } from '@fortawesome/free-solid-svg-icons';
+import Spinner from './Spinner';
+import { useQuery } from '@tanstack/react-query';
+import { listleads } from '../services/leadsRouter';
+import { listtask } from '../services/tasksRouter';
+import { liststaffs } from '../services/staffRouter';
 
-function Staffdetailsmodal() {
-    const dispatch = useDispatch()
-    const queryclient = useQueryClient()
-    const userlogged = useSelector((state) => state.auth.user)
-    const role = useSelector((state) => state.auth.role)
-    const [section, setsection] = useState('details')
+const StatCard = ({ icon, label, value, colorClass }) => (
+  <motion.div
+    whileHover={{ scale: 1.03, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
+    className="bg-white p-5 rounded-xl shadow-md flex flex-col items-center text-center space-y-3 border border-gray-100 transition-all duration-200"
+  >
+    <div className={`p-4 rounded-full ${colorClass} bg-opacity-20`}>
+      <FontAwesomeIcon icon={icon} className={`${colorClass} text-2xl`} />
+    </div>
+    <div>
+      <p className="text-gray-500 text-sm font-medium">{label}</p>
+      <p className="text-3xl font-bold text-gray-800">{value}</p>
+    </div>
+  </motion.div>
+);
 
-    const [showsuccess, setshowsuccess] = useState(false)
-    const [imagesuccess, setimagesuccess] = useState(false)
+function StaffDetailsModal() {
+  const dispatch = useDispatch();
+  const { isOpen, selectedStaffId } = useSelector((state) => state.staffDetailModal);
 
-    const changingpassword = useMutation({
-        mutationKey: ['Change Password'],
-        mutationFn: changepassword
-    })
+  const { data: staffData, isLoading: isStaffLoading } = useQuery({
+    queryKey: ['staffDetails', selectedStaffId],
+    queryFn: () => liststaffs().then(data => data.find(staff => staff._id === selectedStaffId)),
+    enabled: isOpen && !!selectedStaffId,
+  });
 
-    const uploadingImage = useMutation({
-        mutationKey: ['Upload Profile'],
-        mutationFn: profile_image,
-        onSuccess: (profileImage) => {
-            dispatch(setImage(profileImage)),
-                queryclient.invalidateQueries(['listagents'])
-        }
-    })
+  const { data: leadsData, isLoading: isLeadsLoading } = useQuery({
+    queryKey: ['allLeads', selectedStaffId],
+    queryFn: () => listleads({ assignedTo: selectedStaffId }),
+    enabled: isOpen && !!selectedStaffId,
+  });
 
-    const profileimagevalidation = Yup.object({
-        profileimage: Yup.mixed().required('Profile image is required')
-    })
+  const { data: tasksData, isLoading: isTasksLoading } = useQuery({
+    queryKey: ['allTasks'],
+    queryFn: listtask,
+    enabled: isOpen,
+  });
 
-    const profileimageForm = useFormik({
-        initialValues: {
-            profileimage: null
-        },
-        validationSchema: profileimagevalidation,
+  const staffLeads = leadsData?.leads?.filter(lead => lead.assignedTo?._id === selectedStaffId) || [];
 
-        onSubmit: async (values) => {
-            const formData = new FormData()
-            formData.append('profileimage', values.profileimage)
-            await uploadingImage.mutateAsync(formData)
-            setimagesuccess(true)
-            setTimeout(() => {
-                dispatch(toggleStaffdetailmodal(null))
-                setimagesuccess(false)
-            }, 1000);
-        }
-    })
+  const staffTasks = tasksData?.task?.filter(task => task.assignedTo === selectedStaffId) || [];
 
-    const changepasswordvalidation = Yup.object({
-        oldpassword: Yup.string().required('This field is required'),
-        newpassword: Yup.string().required('This field is required').min(6, "New password must be at least 6 characters").matches(/[A-Z]/, "Password must contain at least one uppercase letter").matches(/\d/, "Password must contain at least one number").matches(/[@$!%*?&]/, "Password must contain at least one special character"),
-        confirmnewpassword: Yup.string().required('This field is required').oneOf([Yup.ref('newpassword')], "Passwords do not match")
-    })
+  const totalLeads = staffLeads.length;
+  const newLeads = staffLeads.filter(lead => lead.status === 'new').length;
+  const openLeads = staffLeads.filter(lead => lead.status === 'open').length;
+  const convertedLeads = staffLeads.filter(lead => lead.status === 'converted').length;
+  const rejectedLeads = staffLeads.filter(lead => lead.status === 'rejected').length;
 
-    const changepasswordForm = useFormik({
-        initialValues: {
-            oldpassword: '',
-            newpassword: '',
-            confirmnewpassword: ''
-        },
-        validationSchema: changepasswordvalidation,
-        onSubmit: async (values) => {
-            await changingpassword.mutateAsync({ id: userlogged.id, formdata: values })
-            setshowsuccess(true)
-            setTimeout(() => {
-                dispatch(toggleStaffdetailmodal(null))
-                setshowsuccess(false)
-            }, 1000);
-        }
-    })
+  const totalTasks = staffTasks.length;
+  const pendingTasks = staffTasks.filter(task => task.status === 'pending').length;
+  const completedTasks = staffTasks.filter(task => task.status === 'completed').length;
 
-    return (
-        <div className="fixed inset-0 bg-gradient-to-br from-gray-900/70 to-blue-900/70 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 relative transform transition-all duration-300 scale-100 hover:scale-[1.02]">
-                {/* Header */}
-                <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-6">
-                    {role !== 'Admin' ? (
-                        <h2 className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                            Staff Profile
-                        </h2>
-                    ) : (
-                        <h2 className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                            Admin Profile
-                        </h2>
-                    )}
-                    <button
-                        onClick={() => dispatch(toggleStaffdetailmodal())}
-                        className="text-gray-400 hover:text-red-500 text-2xl font-bold transition duration-300 transform hover:scale-125"
-                    >
-                        &times;
-                    </button>
-                </div>
-                <div className="flex gap-4 mb-8">
-                    <button
-                        className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-300 ${section === 'details'
-                            ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                        onClick={() => setsection('details')}
-                    >
-                        Profile
-                    </button>
-                    <button
-                        className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-300 ${section === 'changepassword'
-                            ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                        onClick={() => setsection('changepassword')}
-                    >
-                        Password
-                    </button>
-                </div>
+  // Follow-ups data is not available via current APIs
+  const totalFollowups = 'N/A';
+  const convertedFollowups = 'N/A';
 
-                {/* Section Content */}
-                {section === 'details' ? (
-                    <div className="space-y-4">
-                        <div className="flex justify-center mb-4">
-                            <div className="w-24 h-24 rounded-full border-2 border-blue-500 overflow-hidden flex items-center justify-center bg-gray-100 shadow-md">
-                                <img
-                                    src={userlogged?.image}
-                                    alt="Profile"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        </div>
-                        {uploadingImage.isLoading && (
-                            <Spinner />
-                        )}
-                        {uploadingImage.isError && (
-                            <p className="text-red-600 bg-red-50 p-4 rounded-xl text-sm font-medium shadow-sm">
-                                Error: {uploadingImage.error?.message}
-                            </p>
-                        )}
-                        {uploadingImage.isSuccess && (
-                            <p className="text-green-600 bg-green-50 p-4 rounded-xl text-sm font-medium shadow-sm">
-                                Profile picture uploaded successfully!
-                            </p>
-                        )}
-                        <form onSubmit={profileimageForm.handleSubmit} className="flex items-center gap-4">
-                            <input
-                                type="file"
-                                name="profileimage"
-                                accept='image/*'
-                                onChange={(e) => {
-                                    profileimageForm.setFieldValue('profileimage', e.currentTarget.files[0]);
-                                }}
-                                className="w-48 px-3 py-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 text-sm file:mr-3 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 transition"
-                            />
-                            <button
-                                type="submit"
-                                className="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition"
-                            >
-                                Upload
-                            </button>
-                        </form>
-                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-sm">
-                            <span className="font-medium text-gray-700">Name:</span>
-                            <span className="text-gray-900 font-semibold">{userlogged.name}</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-sm">
-                            <span className="font-medium text-gray-700">Email:</span>
-                            <span className="text-gray-900 font-semibold">{userlogged.email}</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-sm">
-                            <span className="font-medium text-gray-700">Role:</span>
-                            <span className="text-gray-900 font-semibold capitalize">{userlogged.role}</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-sm">
-                            <span className="font-medium text-gray-700">Mobile:</span>
-                            <span className="text-gray-900 font-semibold">{userlogged.mobile}</span>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        {changingpassword.isLoading && (
-                            <Spinner />
-                        )}
-                        {changingpassword.isError && (
-                            <p className="text-red-600 bg-red-50 p-4 rounded-xl text-sm font-medium shadow-sm">
-                                {changingpassword.error?.response?.data?.message}
-                            </p>
-                        )}
-                        <form onSubmit={changepasswordForm.handleSubmit} className="space-y-5">
-                            <div>
-                                <input
-                                    type="password"
-                                    name="oldpassword"
-                                    placeholder="Current Password"
-                                    value={changepasswordForm.values.oldpassword}
-                                    {...changepasswordForm.getFieldProps('oldpassword')}
-                                    className="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 transition bg-gray-50 text-gray-900 placeholder-gray-400"
-                                />
-                                {changepasswordForm.touched.oldpassword && changepasswordForm.errors.oldpassword && (
-                                    <p className="text-red-500 text-xs mt-2">{changepasswordForm.errors.oldpassword}</p>
-                                )}
-                            </div>
-                            <div>
-                                <input
-                                    type="password"
-                                    name="newpassword"
-                                    placeholder="New Password"
-                                    value={changepasswordForm.values.newpassword}
-                                    {...changepasswordForm.getFieldProps('newpassword')}
-                                    className="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 transition bg-gray-50 text-gray-900 placeholder-gray-400"
-                                />
-                                {changepasswordForm.touched.newpassword && changepasswordForm.errors.newpassword && (
-                                    <p className="text-red-500 text-xs mt-2">{changepasswordForm.errors.newpassword}</p>
-                                )}
-                            </div>
-                            <div>
-                                <input
-                                    type="password"
-                                    name="confirmnewpassword"
-                                    placeholder="Confirm New Password"
-                                    value={changepasswordForm.values.confirmnewpassword}
-                                    {...changepasswordForm.getFieldProps('confirmnewpassword')}
-                                    className="w-full px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 transition bg-gray-50 text-gray-900 placeholder-gray-400"
-                                />
-                                {changepasswordForm.touched.confirmnewpassword && changepasswordForm.errors.confirmnewpassword && (
-                                    <p className="text-red-500 text-xs mt-2">{changepasswordForm.errors.confirmnewpassword}</p>
-                                )}
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-600 transition duration-300 shadow-md"
-                            >
-                                Update Password
-                            </button>
-                        </form>
-                    </div>
+  if (!isOpen) return null;
 
-                )}
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
+          onClick={() => dispatch(closeStaffDetailModal())}
+        >
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+            className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-gray-100"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+          >
+            {(isStaffLoading || isLeadsLoading || isTasksLoading) && (
+              <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center rounded-2xl z-10">
+                <Spinner />
+              </div>
+            )}
+
+            <button
+              onClick={() => dispatch(closeStaffDetailModal())}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-3xl transition-colors duration-200"
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+
+            <div className="flex items-center space-x-4 mb-8 pb-4 border-b border-gray-200">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl shadow-lg">
+                <FontAwesomeIcon icon={staffData?.role === 'Agent' ? faUserTie : faUserCog} />
+              </div>
+              <div>
+                <h2 className="text-3xl font-bold text-gray-800">{staffData?.name || 'Staff Details'}</h2>
+                <p className="text-gray-500 text-lg">{staffData?.role}</p>
+              </div>
             </div>
-            <AnimatePresence>
-                {showsuccess && (
-                    <motion.div
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
-                        <motion.div className="absolute inset-0 bg-black opacity-30" />
-                        <motion.div
-                            className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[100px] sm:h-[120px] flex items-center justify-center text-center"
-                            initial={{ scale: 0.5 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0.5 }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                        >
-                            ✅ Password changed successfully!
-                        </motion.div>
-                    </motion.div>
+
+            {staffData ? (
+              <div className="space-y-8">
+                {/* Staff Basic Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-6 rounded-xl border border-gray-100">
+                  <p className="text-gray-700 text-lg"><FontAwesomeIcon icon={faEnvelope} className="mr-3 text-blue-500" /><strong>Email:</strong> {staffData?.email}</p>
+                
+                  <p className="text-gray-700 text-lg"><FontAwesomeIcon icon={faPhone} className="mr-3 text-green-500" /><strong>Mobile:</strong> {staffData?.mobile}</p>
+                </div>
+
+                {/* Assigned Agents (for Sub-Admins) */}
+
+                {staffData?.role === 'Sub-Admin' && staffData?.assignedAgents?.length > 0 && (
+                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                    <h5 className="text-xl font-semibold text-gray-700 mb-3">Assigned Agents ({staffData.assignedAgents.length})</h5>
+                    <div className="flex flex-wrap gap-2">
+                      {staffData.assignedAgents.map((agent) => (
+                        <span key={agent._id} className="bg-indigo-100 text-indigo-800 text-xs px-3 py-1 rounded-full">
+                          {agent.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                {imagesuccess && (
-                    <motion.div
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
-                        <motion.div className="absolute inset-0 bg-black opacity-30" />
-                        <motion.div
-                            className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[100px] sm:h-[120px] flex items-center justify-center text-center"
-                            initial={{ scale: 0.5 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0.5 }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                        >
-                            ✅ Profile picture changed successfully!
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    )
+
+                {/* Leads Statistics */}
+                <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                  <h4 className="text-xl font-semibold text-blue-800 mb-5 flex items-center"><FontAwesomeIcon icon={faChartLine} className="mr-3" />Leads Overview</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <StatCard icon={faClipboardList} label="Total Leads" value={totalLeads} colorClass="text-blue-600" />
+                    <StatCard icon={faHourglassHalf} label="Open Leads" value={openLeads} colorClass="text-yellow-600" />
+                    <StatCard icon={faCheckCircle} label="Converted Leads" value={convertedLeads} colorClass="text-green-600" />
+                    <StatCard icon={faTimes} label="Rejected Leads" value={rejectedLeads} colorClass="text-red-600" />
+                  </div>
+
+                  {staffLeads.length > 0 && (
+                    <div>
+                      <h5 className="text-lg font-semibold text-blue-700 mb-3">Assigned Leads ({staffLeads.length})</h5>
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {staffLeads.map(lead => (
+                          <div key={lead._id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center">
+                            <div>
+                              <p className="font-semibold text-gray-800">{lead.name}</p>
+                              <p className="text-gray-600 text-sm">{lead.email} | {lead.mobile}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${lead.status === 'Converted' ? 'bg-green-100 text-green-800' : lead.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                              {lead.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tasks Statistics */}
+                <div className="bg-purple-50 p-6 rounded-xl border border-purple-100">
+                  <h4 className="text-xl font-semibold text-purple-800 mb-5 flex items-center"><FontAwesomeIcon icon={faTasks} className="mr-3" />Tasks Overview</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <StatCard icon={faTasks} label="Total Tasks" value={totalTasks} colorClass="text-purple-600" />
+                    <StatCard icon={faHourglassHalf} label="Pending Tasks" value={pendingTasks} colorClass="text-orange-600" />
+                    <StatCard icon={faCheckCircle} label="Completed Tasks" value={completedTasks} colorClass="text-green-600" />
+                  </div>
+
+                  {staffTasks.length > 0 && (
+                    <div>
+                      <h5 className="text-lg font-semibold text-purple-700 mb-3">Assigned Tasks ({staffTasks.length})</h5>
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {staffTasks.map(task => (
+                          <div key={task._id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center">
+                            <div>
+                              <p className="font-semibold text-gray-800">{task.title}</p>
+                              <p className="text-gray-600 text-sm">Updated At: {new Date(task.updatedAt).toLocaleDateString()}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${task.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                              {task.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Follow-ups Statistics */}
+                <div className="bg-teal-50 p-6 rounded-xl border border-teal-100">
+                  <h4 className="text-xl font-semibold text-teal-800 mb-5 flex items-center"><FontAwesomeIcon icon={faClipboardList} className="mr-3" />Follow-ups Overview</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <StatCard icon={faClipboardList} label="Total Follow-ups" value={totalFollowups} colorClass="text-indigo-600" />
+                    <StatCard icon={faCheckCircle} label="Converted Follow-ups" value={convertedFollowups} colorClass="text-teal-600" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-gray-600 text-lg font-medium">No staff data available or selected.</p>
+                <p className="text-gray-400 text-sm mt-2">Please select a staff member from the list to view their details.</p>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
-export default Staffdetailsmodal
+export default StaffDetailsModal;

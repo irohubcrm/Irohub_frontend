@@ -4,6 +4,7 @@ import modalslice from "./modalSlice";
 import settingsmodalslice from "./settingsmodalSlice";
 import passwordmodalSlice from "./passwordmodalSlice";
 import createadminmodalslice from "./createadminmodalSlice";
+import staffDetailModalReducer from "./staffDetailModalSlice";
 
 
 
@@ -15,6 +16,7 @@ export const store = configureStore({
         settingsmodal: settingsmodalslice,
         passwordmodal: passwordmodalSlice,
         createadminmodal: createadminmodalslice,
+        staffDetailModal: staffDetailModalReducer,
        
     }
 });

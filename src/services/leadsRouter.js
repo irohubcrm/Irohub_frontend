@@ -10,38 +10,43 @@ export const addleads = async (leadData) => {
   return data;
 };
 
-export const listleads = async ({
-  page = 1,
-  limit = 10,
-  priority,
-  status,
-  filterleads,
-  assignedTo,
-  searchText,
-  date,
-  startDate,
-  endDate,
-  sortBy,
-}) => {
-  const params = new URLSearchParams({ page, limit });
-  if (priority && priority !== "Priority") params.append("priority", priority);
-  if (status && status !== "Status") params.append("status", status);
-  if (filterleads && filterleads !== "All")
-    params.append("filterleads", filterleads);
-  if (assignedTo && assignedTo !== "AssignedTo")
-    params.append("assignedTo", assignedTo);
-  if (searchText) params.append("searchText", searchText);
-  if (date && date !== "Date") params.append("date", date);
+export const listleads = async (filters = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    priority,
+    status,
+    filterleads,
+    assignedTo,
+    searchText,
+    date,
+    startDate,
+    endDate,
+    sortBy,
+  } = filters;
+
+  const params = new URLSearchParams();
+
+  const appendIfValid = (key, value, ignoreList = []) => {
+    if (value && !ignoreList.includes(value)) params.append(key, value);
+  };
+
+  appendIfValid("page", page);
+  appendIfValid("limit", limit);
+  appendIfValid("priority", priority, ["Priority"]);
+  appendIfValid("status", status, ["Status"]);
+  appendIfValid("filterleads", filterleads, ["All"]);
+  appendIfValid("assignedTo", assignedTo, ["AssignedTo"]);
+  appendIfValid("date", date, ["Date"]);
+  appendIfValid("sortBy", sortBy, ["Sort By"]);
+
+  if (searchText?.trim()) params.append("searchText", searchText.trim());
   if (startDate) params.append("startDate", startDate);
   if (endDate) params.append("endDate", endDate);
-  if (sortBy && sortBy !== "Sort By") params.append("sortBy", sortBy);
 
-  const { data } = await axios.get(
-    `${API_URL}/leads/list?${params.toString()}`,
-    getAuthorized()
-  );
+  const { data } = await axios.get(`${API_URL}/leads/list?${params}`, getAuthorized());
   return data;
-};
+}
 
 export const assignleads = async ({ leadId, staffId, isAssigning }) => {
   const { data } = await axios.put(

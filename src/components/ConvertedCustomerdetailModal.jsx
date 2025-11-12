@@ -17,7 +17,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEdit,
-  faTrash,
+  faTrash, 
   faUser,
   faPhone,
   faCalendar,
@@ -32,14 +32,15 @@ import {
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Spinner from "./Spinner";
-import Convertedleadeditmodal from "./Convertedleadeditmodal";
+
 import PaymentAddModel from "./payments/PaymentAddModel";
+import Convertedleadeditmodal from "./Convertedleadeditmodal";
 
 function ConvertedCustomerdetailModal() {
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
   const selectedcustomer = useSelector((state) => state.modal.selectedCustomer);
-  console.log(selectedcustomer,"selectedcustomer from customer")
+  // console.log(selectedcustomer,"selectedcustomer from customer")
   const selectedlead = useSelector((state) => state.modal.selectedLead);
 
   const isConvertededitmodal = useSelector(

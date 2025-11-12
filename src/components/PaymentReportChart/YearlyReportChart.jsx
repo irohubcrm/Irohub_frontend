@@ -18,7 +18,7 @@ export default function YearlyReportChart() {
         
 
     });
-        console.log(data,"dataass");
+
 
     if(isLoading)return <p>Loading the Chart............................</p>
     if(isError) return <p>Error loading Chart data....</p>
@@ -45,7 +45,7 @@ return {
              }
              )
 
-    console.log(yearlyTotals, "yearlyTotal");
+
     
     const chartData = {
     labels: years,

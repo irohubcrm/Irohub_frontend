@@ -8,6 +8,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { FaUserPlus } from 'react-icons/fa'
 import { addcustomer } from '../services/customersRouter'
 import Spinner from './Spinner'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 
 function Addcustomermodal() {
     const dispatch = useDispatch()
@@ -25,9 +27,9 @@ function Addcustomermodal() {
 
     const customerformvalidation = Yup.object({
         name: Yup.string().required("Name is required"),
-        mobile: Yup.string().required("Mobile number is required").matches(/^\d{10}$/, "Mobile number must be 10 digits"),
-        alternativemobile: Yup.string().matches(/^\d{10}$/, "Alternative number must be 10 digits"),
-        email: Yup.string().matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i, "Invalid email format")
+        mobile: Yup.string().required("Mobile number is required"),
+        alternativemobile: Yup.string(),
+        email: Yup.string().matches(/.+@.+\..+/, "Invalid email format")
     })
 
     const addcustomerForm = useFormik({
@@ -99,13 +101,9 @@ function Addcustomermodal() {
                             )}
                         </div>
                         <div>
-                            <input
-                                type='text'
-                                name='mobile'
-                                value={addcustomerForm.values.mobile}
-                                {...addcustomerForm.getFieldProps('mobile')}
-                                className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
-                                placeholder='Enter the mobile number'
+                            <PhoneInput
+                                country={"us"}
+                                buttonClass="!border-gray-300 !p-3"
                             />
                             <span className='text-red-500 text-xs block mt-1'>* required</span>
                             {addcustomerForm.touched.mobile && addcustomerForm.errors.mobile && (
@@ -126,13 +124,12 @@ function Addcustomermodal() {
                             )}
                         </div>
                         <div>
-                            <input
-                                type='text'
-                                name='alternativemobile'
+                            <PhoneInput
+                                country={"us"}
                                 value={addcustomerForm.values.alternativemobile}
-                                {...addcustomerForm.getFieldProps('alternativemobile')}
-                                className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
-                                placeholder='Enter the alternative mobile'
+                                onChange={(phone) => addcustomerForm.setFieldValue("alternativemobile", phone)}
+                                inputClass="!w-full !p-3 !text-gray-800 !border !border-gray-300 !rounded-lg"
+                                buttonClass="!border-gray-300 !p-3"
                             />
                             {addcustomerForm.touched.alternativemobile && addcustomerForm.errors.alternativemobile && (
                                 <p className='text-red-500 text-xs sm:text-sm mt-1'>{addcustomerForm.errors.alternativemobile}</p>
