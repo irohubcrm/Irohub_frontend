@@ -12,16 +12,137 @@ import {
 import { listleadsourcesettings } from "../services/settingservices/leadSourceSettingsRouter";
 import Spinner from "./Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { 
-  faCheckCircle, 
-  faUser, 
-  faEnvelope, 
-  faPhone, 
-  faMapMarkerAlt, 
+import { extractCountryAndNumber } from "../utils/phoneUtils";
+import {
+  faCheckCircle,
+  faUser,
+  faEnvelope,
+  faPhone,
+  faMapMarkerAlt,
   faDollarSign,
-  faTimes 
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import PersonalDetails from "./PersonalDetails";
+import { countryCodes } from "../utils/countryCodes";
+import { Variable } from "lucide-react";
+
+const InputField = ({
+  icon,
+  label,
+  name,
+  type = "text",
+  placeholder,
+  error,
+  value,
+  onChange,
+  onBlur,
+}) => (
+  <div className="space-y-2">
+    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+      <FontAwesomeIcon icon={icon} className="text-gray-400 w-4 h-4" />
+      {label}
+    </label>
+    <div className="relative">
+      <FontAwesomeIcon
+        icon={icon}
+        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
+      />
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        className={`
+          w-full pl-10 pr-4 py-3 border-2 rounded-xl transition-all duration-200
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+          ${
+            error
+              ? "border-red-300 bg-red-50 text-white"
+              : "border-gray-200 hover:border-gray-300 bg-white"
+          }
+        `}
+      />
+    </div>
+    {error && (
+      <p className="text-white-500 text-xs flex items-center gap-1">
+        <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
+        {error}
+      </p>
+    )}
+  </div>
+);
+
+const SelectField = ({
+  icon,
+  label,
+  name,
+  options,
+  value,
+  onChange,
+  onBlur,
+  error,
+}) => (
+  <div className="space-y-2">
+    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+      <FontAwesomeIcon icon={icon} className="text-gray-400 w-4 h-4" />
+      {label}
+    </label>
+    <div className="relative">
+      <FontAwesomeIcon
+        icon={icon}
+        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
+      />
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        className={`
+          w-full pl-10 pr-4 py-3 border-2 rounded-xl transition-all duration-200
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+          ${
+            error
+              ? "border-red-300 bg-red-50"
+              : "border-gray-200 hover:border-gray-300 bg-white"
+          }
+          appearance-none bg-white
+        `}
+      >
+        <option value="">{`Select ${label}`}</option>
+        {options?.map((option, idx) => (
+          <option key={idx} value={option.code || option.title}>
+            {option.flag && option.name
+              ? `${option.flag} ${option.code} - ${option.name}`
+              : option.title}
+          </option>
+        ))}
+      </select>
+      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+        <svg
+          className="w-4 h-4 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </div>
+    </div>
+    {error && (
+      <p className="text-red-500 text-xs flex items-center gap-1">
+        <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
+        {error}
+      </p>
+    )}
+  </div>
+);
 
 function CustomereditModal() {
   const dispatch = useDispatch();
@@ -35,10 +156,38 @@ function CustomereditModal() {
     queryFn: listleadsourcesettings,
   });
 
-  // Mutation to update customer
   const updatingcustomers = useMutation({
     mutationKey: ["Update customers"],
     mutationFn: updatecustomerdetails,
+
+    onMutate: async ({ customerId, customerData }) => {
+      await queryClient.cancelQueries(["Listleads"]);
+
+      const previousLeads = queryClient.getQueryData(["Listleads"]);
+
+      queryClient.setQueryData(["Listleads"], (old) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          data: old.data.map((lead) =>
+            lead.id === customerId ? { ...lead, ...customerData } : lead
+          ),
+        };
+      });
+
+      return { previousLeads };
+    },
+
+    onError: (error, variables, context) => {
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["Listleads"], context.previousLeads);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries(["Listleads"]);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(["Listleads"]);
       setupdatesuccessmodal(true);
@@ -52,13 +201,22 @@ function CustomereditModal() {
 
   // Form validation
   const customerEditformvalidation = Yup.object({
-    name: Yup.string().required("Name is required"),
+    name: Yup.string()
+      .required("Name is required")
+      .matches(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces")
+      .min(3, "Name must be at least 3 characters"),
     email: Yup.string()
-      .email("Invalid email format")
-      .required("Email is required"),
+      .required("Email is required")
+      .email("Invalid email format"),
     mobile: Yup.string()
-      .matches(/^\d{10}$/, "Invalid mobile number")
-      .required("Mobile is required"),
+      .required("Mobile is required")
+      .matches(
+        /^\+?[0-9\s]+$/,
+        "Mobile number can contain digits, spaces, and optional '+'"
+      )
+      .min(7, "Mobile number must be at least 7 digits")
+      .max(15, "Mobile number must be at most 15 digits"),
+    countrycode: Yup.string().required("Country code is required"),
     source: Yup.string(),
     location: Yup.string(),
     interestedproduct: Yup.string(),
@@ -66,11 +224,14 @@ function CustomereditModal() {
   });
 
   // Formik form
+  const { countrycode, mobile } = extractCountryAndNumber(selectedLead?.mobile);
+
   const customereditForm = useFormik({
     initialValues: {
       name: selectedLead?.name || "",
       email: selectedLead?.email || "",
-      mobile: selectedLead?.mobile || "",
+      mobile: mobile || "",
+      countrycode: countrycode || "+91",
       source: selectedLead?.source?.title || "",
       location: selectedLead?.location || "",
       interestedproduct: selectedLead?.interestedproduct || "",
@@ -78,100 +239,31 @@ function CustomereditModal() {
     },
     validationSchema: customerEditformvalidation,
     onSubmit: async (values) => {
-      await updatingcustomers.mutateAsync({
-        customerId: selectedLead._id,
-        customerData: values,
-      });
+      let mobile = values.mobile.replace(/\s+/g, "");
+
+      // Remove existing country code from mobile number if present
+      if (mobile.startsWith(values.countrycode)) {
+        mobile = mobile.substring(values.countrycode.length);
+      }
+
+      // Combine country code and mobile number
+      const fullMobile = `${values.countrycode}${mobile}`;
+
+      const payload = { ...values, mobile: fullMobile };
+
+      try {
+        await updatingcustomers.mutateAsync({
+          customerId: selectedLead._id,
+          customerData: payload,
+        });
+      } catch (error) {
+        console.error("Error updating customer:", error);
+      }
     },
   });
 
   const filteredsource = fetchleadsource?.data?.getLeadsource?.filter(
     (source) => source.active
-  );
-
-  const InputField = ({ icon, label, name, type = "text", placeholder, error, value, onChange, onBlur }) => (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-        <FontAwesomeIcon icon={icon} className="text-gray-400 w-4 h-4" />
-        {label}
-      </label>
-      <div className="relative">
-        <FontAwesomeIcon 
-          icon={icon} 
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" 
-        />
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          className={`
-            w-full pl-10 pr-4 py-3 border-2 rounded-xl transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-            ${error 
-              ? 'border-red-300 bg-red-50' 
-              : 'border-gray-200 hover:border-gray-300 bg-white'
-            }
-          `}
-        />
-      </div>
-      {error && (
-        <p className="text-red-500 text-xs flex items-center gap-1">
-          <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-
-  const SelectField = ({ icon, label, name, options, value, onChange, onBlur, error }) => (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-        <FontAwesomeIcon icon={icon} className="text-gray-400 w-4 h-4" />
-        {label}
-      </label>
-      <div className="relative">
-        <FontAwesomeIcon 
-          icon={icon} 
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" 
-        />
-        <select
-          name={name}
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
-          className={`
-            w-full pl-10 pr-4 py-3 border-2 rounded-xl transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-            ${error 
-              ? 'border-red-300 bg-red-50' 
-              : 'border-gray-200 hover:border-gray-300 bg-white'
-            }
-            appearance-none bg-white
-          `}
-        >
-          <option value="">{`Select ${label}`}</option>
-          {options?.map((option, idx) => (
-            <option key={idx} value={option.title}>
-              {option.title}
-            </option>
-          ))}
-        </select>
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-      {error && (
-        <p className="text-red-500 text-xs flex items-center gap-1">
-          <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
-          {error}
-        </p>
-      )}
-    </div>
   );
 
   return (
@@ -204,8 +296,12 @@ function CustomereditModal() {
               <FontAwesomeIcon icon={faUser} className="text-white w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Edit Lead Details</h2>
-              <p className="text-sm text-gray-500">Update customer information</p>
+              <h2 className="text-2xl font-bold text-gray-800">
+                Edit Lead Details
+              </h2>
+              <p className="text-sm text-gray-500">
+                Update customer information
+              </p>
             </div>
           </div>
           <motion.button
@@ -257,7 +353,9 @@ function CustomereditModal() {
                 label="Full Name"
                 name="name"
                 placeholder="Enter full name"
-                error={customereditForm.touched.name && customereditForm.errors.name}
+                error={
+                  customereditForm.touched.name && customereditForm.errors.name
+                }
                 {...customereditForm.getFieldProps("name")}
               />
 
@@ -267,7 +365,10 @@ function CustomereditModal() {
                 name="email"
                 type="email"
                 placeholder="Enter email address"
-                error={customereditForm.touched.email && customereditForm.errors.email}
+                error={
+                  customereditForm.touched.email &&
+                  customereditForm.errors.email
+                }
                 {...customereditForm.getFieldProps("email")}
               />
 
@@ -275,9 +376,26 @@ function CustomereditModal() {
                 icon={faPhone}
                 label="Mobile Number"
                 name="mobile"
-                placeholder="Enter 10-digit mobile number"
-                error={customereditForm.touched.mobile && customereditForm.errors.mobile}
+                placeholder="Enter your mobile number"
+                error={
+                  customereditForm.touched.mobile &&
+                  customereditForm.errors.mobile
+                } 
+                {...error && (
+                  <p className="text-red-500 text-xs flex items-center gap-1">{error}</p>)}
                 {...customereditForm.getFieldProps("mobile")}
+              />
+
+              <SelectField
+                icon={faPhone}
+                label="Country Code"
+                name="countrycode"
+                options={countryCodes}
+                error={
+                  customereditForm.touched.countrycode &&
+                  customereditForm.errors.countrycode
+                }
+                {...customereditForm.getFieldProps("countrycode")}
               />
 
               <SelectField
@@ -285,7 +403,10 @@ function CustomereditModal() {
                 label="Lead Source"
                 name="source"
                 options={filteredsource}
-                error={customereditForm.touched.source && customereditForm.errors.source}
+                error={
+                  customereditForm.touched.source &&
+                  customereditForm.errors.source
+                }
                 {...customereditForm.getFieldProps("source")}
               />
             </div>
@@ -297,7 +418,10 @@ function CustomereditModal() {
                 label="Location"
                 name="location"
                 placeholder="Enter location"
-                error={customereditForm.touched.location && customereditForm.errors.location}
+                error={
+                  customereditForm.touched.location &&
+                  customereditForm.errors.location
+                }
                 {...customereditForm.getFieldProps("location")}
               />
 
@@ -307,7 +431,10 @@ function CustomereditModal() {
                 name="leadvalue"
                 type="number"
                 placeholder="Enter lead value"
-                error={customereditForm.touched.leadvalue && customereditForm.errors.leadvalue}
+                error={
+                  customereditForm.touched.leadvalue &&
+                  customereditForm.errors.leadvalue
+                }
                 {...customereditForm.getFieldProps("leadvalue")}
               />
             </div>

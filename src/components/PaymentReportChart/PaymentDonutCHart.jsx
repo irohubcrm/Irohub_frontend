@@ -38,9 +38,9 @@ const PaymentDonutChart = () => {
     setChartState((prev) => ({ ...prev, isVisible: !prev.isVisible }));
   }, []);
 
-  useEffect(() => {
-    console.log('Chart state updated:', chartState);
-  }, [chartState]);
+  // useEffect(() => {
+  //   console.log('Chart state updated:', chartState);
+  // }, [chartState]);
 
   const syncState = React.useSyncExternalStore(
     (callback) => {

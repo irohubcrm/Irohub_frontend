@@ -18,12 +18,11 @@ function Passwordmodal() {
     // Formik validation schemas
     const forgotSchema = Yup.object({
         email: Yup.string()
-            .required("Email is required")
-            .matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i, "Invalid email format")
-    });
+        .required("Email is required")
+        .matches(/.+@.+\..+/, "Invalid email format")    });
 
     const resetSchema = Yup.object({
-        email: Yup.string().required("Email is required").matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i, "Invalid email format"),
+        email: Yup.string().required("Email is required").matches(/.+@.+\..+/, "Invalid email format"),
         pin: Yup.string().required("Please enter the OTP"),
         newpassword: Yup.string()
             .required("Enter password")

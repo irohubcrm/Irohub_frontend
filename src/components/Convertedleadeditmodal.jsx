@@ -9,21 +9,22 @@ import Spinner from "./Spinner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { editcustomerdetails } from "../services/customersRouter";
 import { getProducts } from "../services/paymentstatusRouter";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 
 function Convertedleadeditmodal() {
   const selectedlead = useSelector((state) => state.modal.selectedLead);
-   
+
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
 
   const [showsuccess, setshowsuccess] = useState(false);
 
-    const getProduct = useQuery({
-        queryKey:["get products"],
-        queryFn:getProducts
-    })
+  const getProduct = useQuery({
+    queryKey: ["get products"],
+    queryFn: getProducts,
+  });
 
-    const getSelectedProduct = getProduct?.data?.getProduct
+  const getSelectedProduct = getProduct?.data?.getProduct;
 
   const updatingcustomerdetails = useMutation({
     mutationKey: ["Edit customer details"],
@@ -35,19 +36,28 @@ function Convertedleadeditmodal() {
 
   const editcustomervalidation = Yup.object({
     name: Yup.string(),
-    mobile: Yup.string().matches(/^\d{10}$/, "Mobile number must be 10 digits"),
-    alternativemobile: Yup.string().matches(
-      /^\d{10}$/,
-      "Alternative number must be 10 digits"
-    ),
-    email: Yup.string().matches(
-      /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i,
-      "Invalid email format"
-    ),
-    whatsapp: Yup.string().matches(
-      /^\d{10}$/,
-      "Whatsapp number must be 10 digits"
-    ),
+    mobile: Yup.string()
+      .test(
+        "is-valid-phone",
+        "Phone number is not valid",
+        (value) => !value || isValidPhoneNumber(value)
+      )
+      .required("Phone number is required"),
+    alternativemobile: Yup.string()
+      .test(
+        "is-valid-phone",
+        "Alternative Phone number is not valid",
+        (value) => !value || isValidPhoneNumber(value)
+      )
+      .required("Phone number is required"),
+
+    email: Yup.string().matches(/.+@.+\..+/, "Invalid email format"),
+    whatsapp: Yup.string().test(
+        "is-valid-phone",
+        "Phone number is not valid",
+        (value) => !value || isValidPhoneNumber(value)
+      )
+      .required("whatsapp number is required"),
     product: Yup.string(),
     description: Yup.string().max(
       200,
@@ -68,8 +78,8 @@ function Convertedleadeditmodal() {
     validationSchema: editcustomervalidation,
 
     onSubmit: async (values) => {
-      console.log("Selected Lead:", selectedlead);
-      console.log("Values:", values);
+      // console.log("Selected Lead:", selectedlead);
+      // console.log("Values:", values);
       await updatingcustomerdetails.mutateAsync({
         customerId: selectedlead._id,
         customerData: values,
@@ -127,9 +137,8 @@ function Convertedleadeditmodal() {
               <input
                 type="text"
                 name="name"
-                value={convertedleadeditForm.values.name}
                 {...convertedleadeditForm.getFieldProps("name")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
+                className="border-2 border-solid border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
                 placeholder="Enter the name"
               />
               {convertedleadeditForm.touched.name &&
@@ -143,9 +152,8 @@ function Convertedleadeditmodal() {
               <input
                 type="email"
                 name="email"
-                value={convertedleadeditForm.values.email}
                 {...convertedleadeditForm.getFieldProps("email")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
+                className="border-2 border-solid border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
                 placeholder="Enter the email"
               />
               {convertedleadeditForm.touched.email &&
@@ -155,15 +163,23 @@ function Convertedleadeditmodal() {
                   </p>
                 )}
             </div>
+            {/* Mobile Number */}
             <div>
-              <input
-                type="text"
-                name="mobile"
-                value={convertedleadeditForm.values.mobile}
-                {...convertedleadeditForm.getFieldProps("mobile")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the mobile number"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile Number
+              </label>
+              <div className="flex items-center border-2 border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-400">
+                <PhoneInput
+                  defaultCountry="IN"
+                  name="mobile"
+                  value={convertedleadeditForm.values.mobile}
+                  onChange={(value) =>
+                    convertedleadeditForm.setFieldValue("mobile", value)
+                  }
+                  placeholder="Enter mobile number"
+                  className="w-full px-3 py-2 rounded-lg text-sm sm:text-base focus:outline-none"
+                />
+              </div>
               {convertedleadeditForm.touched.mobile &&
                 convertedleadeditForm.errors.mobile && (
                   <p className="text-red-500 text-xs sm:text-sm mt-1">
@@ -171,15 +187,27 @@ function Convertedleadeditmodal() {
                   </p>
                 )}
             </div>
+
+            {/* Alternative Mobile Number */}
             <div>
-              <input
-                type="text"
-                name="alternativemobile"
-                value={convertedleadeditForm.values.alternativemobile}
-                {...convertedleadeditForm.getFieldProps("alternativemobile")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the alternative mobile"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Alternative Mobile Number
+              </label>
+              <div className="flex items-center border-2 border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-400">
+                <PhoneInput
+                  defaultCountry="IN"
+                  name="alternativemobile"
+                  value={convertedleadeditForm.values.alternativemobile}
+                  onChange={(value) =>
+                    convertedleadeditForm.setFieldValue(
+                      "alternativemobile",
+                      value
+                    )
+                  }
+                  placeholder="Enter alternative number"
+                  className="w-full px-3 py-2 rounded-lg text-sm sm:text-base focus:outline-none"
+                />
+              </div>
               {convertedleadeditForm.touched.alternativemobile &&
                 convertedleadeditForm.errors.alternativemobile && (
                   <p className="text-red-500 text-xs sm:text-sm mt-1">
@@ -187,6 +215,7 @@ function Convertedleadeditmodal() {
                   </p>
                 )}
             </div>
+
             <div>
               <select
                 name="product"
@@ -195,14 +224,15 @@ function Convertedleadeditmodal() {
                 className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base text-black"
               >
                 <option value="">-- Select Product --</option>
-                
-                {getSelectedProduct?.length>0 &&
-                  (getSelectedProduct.map((product)=>{
-                    return(
-                    <option key={product._id} value={product._id}>
+
+                {getSelectedProduct?.length > 0 &&
+                  getSelectedProduct.map((product) => {
+                    return (
+                      <option key={product._id} value={product._id}>
                         {product.title}
-                    </option>
-                  )}))}
+                      </option>
+                    );
+                  })}
               </select>
 
               {convertedleadeditForm.touched.product &&

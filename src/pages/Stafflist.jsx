@@ -19,14 +19,17 @@ import {
   togglestaffeditmodal,
   togglestaffmodal,
 } from "../redux/modalSlice";
+import { openStaffDetailModal } from "../redux/staffDetailModalSlice";
 import Assignleadsmodal from "../components/Assignleadsmodal";
 import Staffmodel from "../components/Staffmodel";
 import Staffeditmodal from "../components/Staffeditmodal";
 import Adminassignteams from "../components/Adminassignteams";
+import StaffDetailsModal from "../components/StaffDetailsModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { deletestaff, liststaffs } from "../services/staffRouter";
 import Icons from "./Icons";
 import Spinner from "../components/Spinner";
+
 
 function Stafflist() {
   const dispatch = useDispatch();
@@ -82,6 +85,7 @@ function Stafflist() {
   const filteredStaff = fetchstaffs?.data?.filter(
     (staff) => staff.role === selectedRole
   );
+
 
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-b from-gray-50 to-gray-100 overflow-x-hidden">
@@ -153,34 +157,37 @@ function Stafflist() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1, ease: "easeOut" }}
                   >
-                    <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex space-x-3 z-[999]">
-                      {/* Edit Button */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => dispatch(togglestaffeditmodal(staff))}
-                          className="p-2.5 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md hover:shadow-lg hover:scale-105 transform transition-all duration-200 ring-2 ring-transparent group-hover:ring-indigo-200"
-                          aria-label={`Edit ${staff.name}`}
-                        >
-                          <FaEdit className="text-base" />
-                        </button>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50">
-                          Edit Staff
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-sm font-medium text-gray-600 mb-4">
+                      <div className="p-2 bg-gray-50 rounded-md">Leads: {staff.leadCount || 0}</div>
+                      <div className="p-2 bg-gray-50 rounded-md">FollowUps: {staff.followupCount || 0}</div>
+                      {staff.role === "Sub-Admin" && (
+                        <div className="p-2 bg-gray-50 rounded-md">Agents: {staff?.assignedAgents?.length || 0}</div>
+                      )}
+                    </div>
 
-                      {/* Delete Button */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => handleconfirm(staff._id)}
-                          className="p-2.5 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white shadow-md hover:shadow-lg hover:scale-105 transform transition-all duration-200 ring-2 ring-transparent group-hover:ring-red-200"
-                          aria-label={`Delete ${staff.name}`}
-                        >
-                          <FaTrash className="text-base" />
-                        </button>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50">
-                          Delete Staff
-                        </div>
-                      </div>
+  
+                    <div className="flex justify-center items-center gap-4 mt-6 pt-4 border-t border-gray-100 bg-gray-50 p-3 rounded-b-2xl -mx-6 -mb-6">
+                      <button
+                        onClick={() => dispatch(openStaffDetailModal(staff._id))}
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors duration-200"
+                        aria-label={`View details for ${staff.name}`}
+                      >
+                        <FaInfoCircle className="text-xl" />
+                      </button>
+                      <button
+                        onClick={() => dispatch(togglestaffeditmodal(staff))}
+                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors duration-200"
+                        aria-label={`Edit ${staff.name}`}
+                      >
+                        <FaEdit className="text-xl" />
+                      </button>
+                      <button
+                        onClick={() => handleconfirm(staff._id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors duration-200"
+                        aria-label={`Delete ${staff.name}`}
+                      >
+                        <FaTrash className="text-xl" />
+                      </button>
                     </div>
 
                     <div className="flex items-center space-x-4 sm:space-x-5 mt-6">
@@ -406,6 +413,7 @@ function Stafflist() {
             </motion.div>
           </motion.div>
         )}
+        <StaffDetailsModal />
       </AnimatePresence>
     </div>
   );
