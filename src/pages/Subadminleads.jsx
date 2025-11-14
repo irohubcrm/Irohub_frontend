@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Sidebar from "./Sidebar";
 import { FaBars, FaPlusCircle, FaSearch } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
@@ -230,11 +230,13 @@ function Subadminleads() {
       setSelectedLeads([]); // Clear selections when changing pages
     }
   };
-  const sortedLeads = [...(fetchleads?.leads || [])].sort((a, b) => {
-    const orderA = statusOrder[a.status] || 99;
-    const orderB = statusOrder[b.status] || 99;
-    return orderA - orderB;
-  });
+  const sortedLeads = useMemo(() => {
+    return [...(fetchleads?.leads || [])].sort((a, b) => {
+      const orderA = statusOrder[a.status] || 99;
+      const orderB = statusOrder[b.status] || 99;
+      return orderA - orderB;
+    });
+  }, [fetchleads]);
   return (
     <div className="fixed inset-0 z-40 flex overflow-x-hidden bg-gray-50">
       {/* Sidebar */}
@@ -272,7 +274,7 @@ function Subadminleads() {
             <div className="flex items-center space-x-2 sm:space-x-4">
               <Icons />
             </div>
-            {role !== "Agent" && !metadata && (
+            { !metadata && (
               <button
                 className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 bg-blue-600 hover:bg-blue-700 text-white p-3 sm:p-4 md:p-5 rounded-full shadow-lg transform hover:-translate-y-2 transition-all duration-300 z-40"
                 onClick={() => dispatch(toggleCustomermodal())}
@@ -574,7 +576,7 @@ function Subadminleads() {
                                 className={`border p-1 sm:p-2 rounded-md bg-gray-100 hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full
                                  ${priorityColor[lead.priority] || ""} `}
                                 value={lead.priority}
-                                disable={!!metadata}
+                                disabled={!!metadata}
                                 onChange={(e) =>
                                   handlepriority(lead._id, e.target.value)
                                 }

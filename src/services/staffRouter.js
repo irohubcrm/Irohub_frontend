@@ -21,8 +21,16 @@ export const listagents = async () => {
     return data
 }
 
-export const deletestaff = async (id) => {
-    const { data } = await axios.delete(`${API_URL}/staffs/delete-staffs/${id}`, getAuthorized())
+export const getallagents = async () => {
+    const { data } = await axios.get(`${API_URL}/staffs/get-all-agents`, getAuthorized())
+    return data
+}
+
+export const deletestaff = async ({ staffId, newAgentId }) => {
+    const { data } = await axios.delete(`${API_URL}/staffs/delete-staffs/${staffId}`, {
+        ...getAuthorized(),
+        data: { newAgentId },
+    })
     return data
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Sidebar from "./Sidebar";
 import { FaBars, FaSearch, FaUserPlus } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
@@ -180,10 +180,11 @@ function Subadmincustomer() {
     }
   };
 
-  const filteredcustomerstatus =
-    fetchcustomerstatus?.data?.getCustomerstatus?.filter(
+  const filteredcustomerstatus = useMemo(() => {
+    return fetchcustomerstatus?.data?.getCustomerstatus?.filter(
       (customerstatus) => customerstatus.active
     );
+  }, [fetchcustomerstatus.data]);
 
   // Simplified payment status function to use Customer.payment
   const getPaymentStatus = (customer) => {

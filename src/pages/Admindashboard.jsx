@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './Sidebar';
 import AreaChart from '../components/Areachart';
 import MonthlyLeadsChart from '../components/BarChart';
@@ -44,23 +44,33 @@ function Admindashboard() {
     return <div className="p-4 text-red-600">Error loading data. Please try again.</div>;
   }
 
-  const totalFollowups = leads?.leads?.length ? leads.leads.filter(lead => lead.status === 'open') : [];
-  const closedLeads = leads?.leads?.length
-    ? leads.leads.filter(
-        lead =>
-          ['closed', 'converted', 'rejected'].includes(lead.status) &&
-          (lead.updatedBy?._id === userlogged?.id || lead.updatedBy === userlogged?.id)
-      )
-    : [];
-  const completedTask = tasks?.task?.length ? tasks.task.filter(task => task.status === 'completed') : [];
-  const assignedTask = tasks?.task?.length
-    ? tasks.task.filter(task => task.assignedTo === userlogged?.id)
-    : [];
-  const completedAssignedtask = tasks?.task?.length
-    ? tasks.task.filter(
-        task => task.status === 'completed' && task.assignedTo === userlogged?.id && task.updatedBy === userlogged?.id
-      )
-    : [];
+  const totalFollowups = useMemo(() => {
+    return leads?.leads?.length ? leads.leads.filter(lead => lead.status === 'open') : [];
+  }, [leads]);
+  const closedLeads = useMemo(() => {
+    return leads?.leads?.length
+      ? leads.leads.filter(
+          lead =>
+            ['closed', 'converted', 'rejected'].includes(lead.status) &&
+            (lead.updatedBy?._id === userlogged?.id || lead.updatedBy === userlogged?.id)
+        )
+      : [];
+  }, [leads, userlogged]);
+  const completedTask = useMemo(() => {
+    return tasks?.task?.length ? tasks.task.filter(task => task.status === 'completed') : [];
+  }, [tasks]);
+  const assignedTask = useMemo(() => {
+    return tasks?.task?.length
+      ? tasks.task.filter(task => task.assignedTo === userlogged?.id)
+      : [];
+  }, [tasks, userlogged]);
+  const completedAssignedtask = useMemo(() => {
+    return tasks?.task?.length
+      ? tasks.task.filter(
+          task => task.status === 'completed' && task.assignedTo === userlogged?.id && task.updatedBy === userlogged?.id
+        )
+      : [];
+  }, [tasks, userlogged]);
 
   const isDataLoading = leadsLoading || tasksLoading;
 

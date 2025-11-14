@@ -30,10 +30,17 @@ export const getpaymentDetails = async (productId) => {
   );
   return data;
 };
+
 export const getpaymentDetailsed = async () => {
     const { data } = await axios.get(`${API_URL}/payment/get-detailsed`, getAuthorized());    
+    console.log("data", data)
     return data;
 };
+
+export const getCustomerPayments = async ({customerId}) => {
+  const { data } = await axios.get(`${API_URL}/payment/get-customerPayments/${customerId}`, getAuthorized());
+  return data;
+}
 
 export const makeAPayment = async () => {
   const { data } = await axios.post(`${API_URL}/payment/makeAPayment`, getAuthorized());

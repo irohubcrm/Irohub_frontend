@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutaction } from "../redux/authSlice";
@@ -47,17 +47,23 @@ function Sidebar() {
     queryFn: acessPermission,
   });
 
-  const hideLeadDetails = permissionData?.getPermission?.find(
-    (perm) => perm.title === "Hide lead details form agent"
-  );
+  const hideLeadDetails = useMemo(() => {
+    return permissionData?.getPermission?.find(
+      (perm) => perm.title === "Hide lead details form agent"
+    );
+  }, [permissionData]);
 
-  const displayLeadDetails = permissionData?.getPermission?.find(
-    (perm) => perm.title === "Display all leads for every staff member"
-  );
+  const displayLeadDetails = useMemo(() => {
+    return permissionData?.getPermission?.find(
+      (perm) => perm.title === "Display all leads for every staff member"
+    );
+  }, [permissionData]);
 
-  const displayCustomerDetails = permissionData?.getPermission?.find(
-    (perm) => perm.title === "Display all customers for every staff member"
-  );
+  const displayCustomerDetails = useMemo(() => {
+    return permissionData?.getPermission?.find(
+      (perm) => perm.title === "Display all customers for every staff member"
+    );
+  }, [permissionData]);
 
   return (
     <>

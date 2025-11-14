@@ -1,0 +1,20 @@
+
+// Before
+import React, { useEffect, useState } from 'react';
+// ... other imports
+
+function MonthlyLeadsChart({ type = 'monthly', allSources = [] }) {
+  // ... component logic
+}
+
+export default MonthlyLeadsChart;
+
+// After
+import React, { useEffect, useState, memo } from 'react';
+// ... other imports
+
+function MonthlyLeadsChart({ type = 'monthly', allSources = [] }) {
+  // ... component logic
+}
+
+export default memo(MonthlyLeadsChart);

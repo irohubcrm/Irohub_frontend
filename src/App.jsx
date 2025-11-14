@@ -1,10 +1,11 @@
+import React, { lazy, Suspense } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
 import Stafflist from './pages/Stafflist';
 import Subadmincustomer from './pages/Subadmincustomer';
 import Subadminleads from './pages/Subadminleads';
 import Subadminfollowups from './pages/Subadminfollowups';
-import Subadminreports from './pages/Subadminreports';
+const Subadminreports = lazy(() => import('./pages/Subadminreports'));
 import Admindashboard from './pages/Admindashboard';
 import Admintasks from './pages/Admintasks';
 import Subadminstafflist from './pages/Subadminstafflist';
@@ -18,6 +19,7 @@ import PaymentAddModel from './components/payments/PaymentAddModel';
 import ProductPaymentDetails from './components/payments/ProductPaymentDetails';
 import PaymentReportSide from './pages/PaymentReportSide';
 import PaymentDetails from './components/payments/PaymentDetails.jsx';
+import Spinner from './components/Spinner';
 
 
 
@@ -41,7 +43,7 @@ function App() {
       <Route path='/agenttasks' element={<Protectedroute><Agenttask /></Protectedroute>} />
       <Route path='/followups' element={<Protectedroute><Subadminfollowups /></Protectedroute>} />
       <Route path='/payments' element={<Protectedroute><Paymentreports /></Protectedroute>} />
-      <Route path='/subadminreports' element={<Protectedroute><Subadminreports /></Protectedroute>} />
+      <Route path='/subadminreports' element={<Protectedroute><Suspense fallback={<Spinner />}><Subadminreports /></Suspense></Protectedroute>} />
       <Route path='/settings' element={<Protectedroute><Settings /></Protectedroute>} />
       
       {/* <Route path="/payment-details" element={<PaymentDetails />} /> */}
