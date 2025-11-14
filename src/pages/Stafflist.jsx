@@ -26,7 +26,7 @@ import Staffeditmodal from "../components/Staffeditmodal";
 import Adminassignteams from "../components/Adminassignteams";
 import StaffDetailsModal from "../components/Staffdetailsmodal";
 import { AnimatePresence, motion } from "framer-motion";
-import { deletestaff, liststaffs } from "../services/staffRouter";
+import { deletestaff, liststaffs, getallagents } from "../services/staffRouter";
 import Icons from "./Icons";
 import Spinner from "../components/Spinner";
 
@@ -45,13 +45,19 @@ function Stafflist() {
 
   const [selectedRole, setselectedRole] = useState("Sub-Admin");
   const [sidebarVisible, setsidebarVisible] = useState(true);
-  const [showconfirm, setshowconfirm] = useState(false);
+  const [showReassignModal, setshowReassignModal] = useState(false);
   const [statussucceess, setstatussuccess] = useState(false);
   const [selectedStaffid, setselectedStaffid] = useState(null);
+  const [newAgentId, setnewAgentId] = useState(null);
 
   const fetchstaffs = useQuery({
     queryKey: ["listagents"],
     queryFn: liststaffs,
+  });
+
+  const fetchAllAgents = useQuery({
+    queryKey: ["listallagents"],
+    queryFn: getallagents,
   });
 
   const deletestaffs = useMutation({
@@ -64,19 +70,24 @@ function Stafflist() {
 
   const handleconfirm = (staffId) => {
     setselectedStaffid(staffId);
-    setshowconfirm(true);
+    setshowReassignModal(true);
   };
 
   const closeconfirm = () => {
     setselectedStaffid(null);
-    setshowconfirm(false);
+    setshowReassignModal(false);
   };
 
-  const confirmdelete = async () => {
-    await deletestaffs.mutateAsync(selectedStaffid);
-    setshowconfirm(false);
+  const confirmDeleteAndReassign = async () => {
+    if (!newAgentId) {
+      // Handle case where no new agent is selected
+      return;
+    }
+    await deletestaffs.mutateAsync({ staffId: selectedStaffid, newAgentId });
+    setshowReassignModal(false);
     setstatussuccess(true);
     setselectedStaffid(null);
+    setnewAgentId(null);
     setTimeout(() => {
       setstatussuccess(false);
     }, 2000);
@@ -362,7 +373,7 @@ function Stafflist() {
             </div>
           </motion.div>
         )}
-        {showconfirm && (
+        {showReassignModal && (
           <motion.div
             className="fixed inset-0 bg-gray-900/70 flex items-center justify-center z-50"
             initial={{ opacity: 0 }}
@@ -377,20 +388,34 @@ function Stafflist() {
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
               <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
-                Are you sure?
+                Reassign Leads
               </h3>
-              <div className="flex gap-4 justify-center">
+              <p className="text-gray-600 mb-4">
+                Select a new agent to reassign the leads to.
+              </p>
+              <select
+                onChange={(e) => setnewAgentId(e.target.value)}
+                className="appearance-none bg-indigo-600 text-white px-4 sm:px-5 py-2.5 pr-10 sm:pr-12 rounded-full shadow-md focus:ring-4 focus:ring-indigo-200 focus:outline-none transition-all duration-200 w-full sm:w-48 text-sm sm:text-base font-medium hover:bg-indigo-700"
+              >
+                <option value="">Select an agent</option>
+                {fetchAllAgents.data?.map((agent) => (
+                  <option key={agent._id} value={agent._id}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-4 justify-center mt-6">
                 <button
-                  onClick={confirmdelete}
+                  onClick={confirmDeleteAndReassign}
                   className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full transition-all duration-200 text-sm sm:text-base font-medium shadow-md"
                 >
-                  Yes
+                  Confirm Delete
                 </button>
                 <button
                   onClick={closeconfirm}
                   className="bg-gray-200 hover:bg-gray-300 text-gray-900 px-6 py-2 rounded-full transition-all duration-200 text-sm sm:text-base font-medium shadow-md"
                 >
-                  No
+                  Cancel
                 </button>
               </div>
             </motion.div>
