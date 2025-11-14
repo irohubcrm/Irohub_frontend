@@ -19,6 +19,7 @@ function Convertedleadeditmodal() {
   const selectedlead = useSelector((state) => state.modal.selectedLead);
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
+  const [showsuccess, setshowsuccess] = useState(false);
 
   const getProduct = useQuery({
     queryKey: ["get products"],
@@ -100,6 +101,15 @@ function Convertedleadeditmodal() {
       )
       .required("Alternative phone number is required"),
     email: Yup.string().matches(/.+@.+\..+/, "Invalid email format"),
+      .required("Phone number is required"),
+
+    email: Yup.string().matches(/.+@.+\..+/, "Invalid email format"),
+    whatsapp: Yup.string().test(
+        "is-valid-phone",
+        "Phone number is not valid",
+        (value) => !value || isValidPhoneNumber(value)
+      )
+      .required("whatsapp number is required"),
     product: Yup.string(),
   });
 
@@ -117,7 +127,6 @@ function Convertedleadeditmodal() {
 
     onSubmit: async (values) => {
       if (!selectedlead?._id) return;
-
       await updatingcustomerdetails.mutateAsync({
         customerId: selectedlead._id,
         customerData: values,

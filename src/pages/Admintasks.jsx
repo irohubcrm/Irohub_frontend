@@ -25,6 +25,7 @@ import Spinner from "../components/Spinner";
 function Admintasks() {
   const [selectedRole, setselectedRole] = useState("Sub-Admin");
   const [sidebarVisible, setsidebarVisible] = useState(false);
+  const [sidebarVisible, setsidebarVisible] = useState(true);
   const isTaskmodal = useSelector((state) => state.modal.addtasksmodal);
   const isViewtaskmodal = useSelector((state) => state.modal.viewtasksModal);
   const isViewedittaskmodal = useSelector(
@@ -87,6 +88,30 @@ function Admintasks() {
             <button
               className="mr-3 text-blue-600 hover:text-blue-800 transition md:hidden"
               onClick={() => setsidebarVisible(true)}
+    <div className="flex h-screen w-screen bg-gray-100 overflow-hidden">
+      {/* Sidebar */}
+      <div className="fixed inset-y-0 left-0 z-40">
+        <motion.div
+          animate={{ x: sidebarVisible ? 0 : -260 }}
+          transition={{ duration: 0.3 }}
+          className="w-64 h-full fixed top-0 left-0 z-50"
+        >
+          <Sidebar />
+        </motion.div>
+      </div>
+
+      {/* Main content */}
+      <motion.div
+        animate={{ x: sidebarVisible ? 256 : 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+          <h3 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center">
+            <button
+              className="mr-3 text-blue-600 hover:text-blue-800 transition"
+              onClick={() => setsidebarVisible(!sidebarVisible)}
             >
               <FaBars className="text-2xl" />
             </button>
@@ -135,6 +160,11 @@ function Admintasks() {
               <motion.div
                 key={staff._id}
                 className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 p-6 group relative flex flex-col items-center text-center"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredStaff.map((staff, index) => (
+              <motion.div
+                key={staff._id}
+                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 p-6 group relative"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -168,6 +198,56 @@ function Admintasks() {
                   </button>
                   <button
                     className="border border-blue-600 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-blue-600 hover:text-white flex items-center justify-center gap-2"
+                    onClick={() => dispatch(toggleViewtasksmodal(staff._id))}
+                  >
+                    <FaAddressBook />
+                    View Details
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center text-lg py-6">
+            No staff members available
+          </p>
+        )}
+      </motion.div>
+
+                <div className="flex items-center space-x-4">
+                  <div className="text-blue-600 text-[80px] sm:text-[100px] lg:text-[120px]">
+                    {staff.profileImage ? (
+                      <img
+                        src={staff.profileImage}
+                        alt="Profile image"
+                        className="w-[120px] h-[120px] rounded-full  border-2 border-[#00B5A6] object-contain"
+                      />
+                    ) : (
+                      <FaUserCircle />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-sm sm:text-base truncate w-40">
+                      {staff.name}
+                    </h4>
+                    <p className="text-sm text-gray-500 capitalize">
+                      {staff.role}
+                    </p>
+                    <div className="flex flex-col gap-2 items-end">
+                      <button
+                        className="text-blue-500 hover:text-blue-700 transition"
+                        title="Edit Tasks"
+                        onClick={() => dispatch(toggleViewedittaskmodal(staff))}
+                      >
+                        <FaEdit className="text-lg" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    className="w-full flex items-center justify-center gap-2 border border-blue-600 text-blue-600 px-4 py-2 rounded-xl font-medium transition hover:bg-blue-600 hover:text-white"
                     onClick={() => dispatch(toggleViewtasksmodal(staff._id))}
                   >
                     <FaAddressBook />

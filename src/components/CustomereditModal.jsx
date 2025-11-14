@@ -380,7 +380,9 @@ function CustomereditModal() {
                 error={
                   customereditForm.touched.mobile &&
                   customereditForm.errors.mobile
-                }
+                } 
+                {...error && (
+                  <p className="text-red-500 text-xs flex items-center gap-1">{error}</p>)}
                 {...customereditForm.getFieldProps("mobile")}
               />
 
