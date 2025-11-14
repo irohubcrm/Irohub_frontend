@@ -83,13 +83,11 @@ function Subadmincustomer() {
       }),
     keepPreviousData: true,
   });
-  console.log("fetchconvertedcustomers", fetchconvertedcustomers)
+
   const fetchcustomerstatus = useQuery({
     queryKey: ["List Settingstatus"],
     queryFn: listcustomersettingstatus,
-    
   });
-  
 
   const updatingcustomerstatus = useMutation({
     mutationKey: ["Update Customerstatus"],
@@ -98,9 +96,6 @@ function Subadmincustomer() {
       queryclient.invalidateQueries(["List converted customers"]);
     },
   });
-
-
-  
 
   const updatingactivecustomers = useMutation({
     mutationKey: ["Update active customers"],
@@ -149,8 +144,6 @@ function Subadmincustomer() {
       setstatussuccessmodal(false);
     }, 2000);
   };
- 
-  
 
   const handleSelectCustomer = (customerId) => {
     setSelectedCustomers((prev) =>
@@ -191,7 +184,6 @@ function Subadmincustomer() {
     fetchcustomerstatus?.data?.getCustomerstatus?.filter(
       (customerstatus) => customerstatus.active
     );
-    
 
   // Simplified payment status function to use Customer.payment
   const getPaymentStatus = (customer) => {
@@ -211,7 +203,7 @@ function Subadmincustomer() {
 
       {/* Main Content */}
       <motion.div
-        animate={{ marginLeft: sidebarVisible ? 256 : 0 }}
+        animate={{ x: sidebarVisible ? 256 : 0 }}
         transition={{ duration: 0.3 }}
         className="flex-1 h-screen overflow-y-auto"
       >
@@ -328,9 +320,9 @@ function Subadmincustomer() {
                     onChange={(e) => setsearchText(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 font-medium bg-white focus:ring-2 focus:ring-blue-500 text-sm sm:text-base w-40 sm:w-56"
                     placeholder="Search..."
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
+                    initial={{ opacity: 0, scaleX: 0 }}
+                    animate={{ opacity: 1, scaleX: 1 }}
+                    exit={{ opacity: 0, scaleX: 0 }}
                     transition={{ duration: 0.3 }}
                   />
                 )}
@@ -473,24 +465,23 @@ function Subadmincustomer() {
                                   : "N/A"}
                               </td>
                               <td className="py-2 sm:py-4 px-2 sm:px-4">
-                          <span
-  className={`inline-block px-2 py-1 rounded-md text-white text-xs sm:text-sm ${
-    getPaymentStatus(customer) === "paid"
-      ? "bg-green-600"
-      : getPaymentStatus(customer) === "partially paid"
-      ? "bg-yellow-500"
-      : "bg-red-500"
-  }`}
->
-  {customer.payment || "Pending"}
-</span>
-
+                                <span
+                                  className={`inline-block px-2 py-1 rounded-md text-white text-xs sm:text-sm ${
+                                    getPaymentStatus(customer) === "paid"
+                                      ? "bg-green-600"
+                                      : getPaymentStatus(customer) ===
+                                        "partially paid"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                  }`}
+                                >
+                                  {customer.payment || "Pending"}
+                                </span>
                               </td>
                               <td className="py-2 sm:py-4 px-2 sm:px-4">
                                 <select
                                   className="border p-1 sm:p-2 rounded-md bg-gray-100 hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full"
-                               value={customer.status?._id || ""}
-
+                                  value={customer.status?._id || ""}
                                   disabled={!!metadata}
                                   onChange={(e) =>
                                     handlecustomerstatus(
@@ -517,7 +508,7 @@ function Subadmincustomer() {
                                   <input
                                     type="checkbox"
                                     className="sr-only peer"
-                                    disable={!!metadata}
+                                    disabled={!!metadata}
                                     checked={!!customer?.isActive}
                                     onChange={(e) =>
                                       handleactivestatus(

@@ -8,6 +8,8 @@ import { FaUserPlus } from 'react-icons/fa'
 import { createadmin } from '../../services/registeradminRouter'
 import { toggleregisteradminModal } from '../../redux/createadminmodalSlice'
 import Spinner from '../Spinner'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 
 function Registeradminmodal() {
 
@@ -26,8 +28,8 @@ function Registeradminmodal() {
 
     const adminvalidation = Yup.object({
         name: Yup.string().required("Name is required"),
-        email: Yup.string().required("Email is required").matches(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i, "Invalid email format"),
-        mobile: Yup.string().required("Mobile is required").matches(/^\d{10}$/, "Mobile number must be 10 digits"),
+        email: Yup.string().required("Email is required").matches(/.+@.+\..+/, "Invalid email format"),
+        mobile: Yup.string().required("Mobile is required"),
         password: Yup.string().required("Password is required").min(6, "New password must be at least 6 characters").matches(/[A-Z]/, "Password must contain at least one uppercase letter").matches(/\d/, "Password must contain at least one number").matches(/[@$!%*?&]/, "Password must contain at least one special character")
     })
 
@@ -111,13 +113,12 @@ function Registeradminmodal() {
                         </div>
 
                         <div>
-                            <input
-                                type='text'
-                                name='mobile'
+                            <PhoneInput
+                                country={"us"}
                                 value={createadminForm.values.mobile}
-                                {...createadminForm.getFieldProps('mobile')}
-                                className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
-                                placeholder='Enter the mobile number'
+                                onChange={(phone) => createadminForm.setFieldValue("mobile", phone)}
+                                inputClass="!w-full !p-3 !text-gray-800 !border !border-gray-300 !rounded-lg"
+                                buttonClass="!border-gray-300"
                             />
                             <span className='text-red-500 text-xs block mt-1'>* required</span>
                             {createadminForm.touched.mobile && createadminForm.errors.mobile && (

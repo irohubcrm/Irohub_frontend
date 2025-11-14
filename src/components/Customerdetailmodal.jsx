@@ -114,14 +114,18 @@ const { data: paymentDetailsData, isLoading: isPaymentDetailsLoading, isError: i
   const handleMarkDone = (id) => {
     markFollowupDone.mutate(id);
   };
-  const canEdit =
-    metadata?.permissions?.includes("editLead") || role === "Admin";
+const canEdit =
+    metadata?.permissions?.includes("editLead") ||
+    ["Admin", "Sub-Admin", "Agent"].includes(role);
   const canDelete =
-    metadata?.permissions?.includes("deleteLead") || role === "Admin";
+    metadata?.permissions?.includes("deleteLead") ||
+    ["Admin", "Sub-Admin", "Agent"].includes(role);
   const canUpdate =
-    metadata?.permissions?.includes("updateLead") || role === "Admin";
+    metadata?.permissions?.includes("updateLead") ||
+    ["Admin", "Sub-Admin", "Agent"].includes(role);
   const canConvert =
-    metadata?.permissions?.includes("ConvertedLead") || role === "Admin";
+    metadata?.permissions?.includes("ConvertedLead") ||
+    ["Admin", "Sub-Admin", "Agent"].includes(role);
   const deletingCustomers = useMutation({
     mutationKey: ["Deleting Customers"],
     mutationFn: deletecustomer,
