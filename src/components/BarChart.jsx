@@ -1,280 +1,125 @@
-import React, { useEffect, useState } from 'react';
-import { Bar } from 'react-chartjs-2';
+import React, { useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { listleads } from '../services/leadsRouter';
-import {
-    Chart as ChartJS,
-    BarElement,
-    CategoryScale,
-    LinearScale,
-    Tooltip,
-    Legend,
-} from 'chart.js';
 import { listleadsourcesettings } from '../services/settingservices/leadSourceSettingsRouter';
 import { liststaffs } from '../services/staffRouter';
+import { subMonths, format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import Spinner from './Spinner';
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+const MonthlyLeadsChart = ({ type = 'monthly' }) => {
+  const { data: leadsData, isLoading: isLoadingLeads } = useQuery({
+    queryKey: ['listleads', { all: true }],
+    queryFn: () => listleads({ all: true }),
+  });
 
-function MonthlyLeadsChart({ type = 'monthly', allSources = [] }) {
-    const [allLeads, setAllLeads] = useState([]);
-    const [isFetchingAll, setIsFetchingAll] = useState(true);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const { data: sourceData, isLoading: isLoadingSources } = useQuery({
+    queryKey: ['List source'],
+    queryFn: listleadsourcesettings,
+    enabled: type === 'source',
+  });
 
-    // Fetch the first page to get pagination metadata
-    const { data: initialLeadsData, isLoading, isError, refetch } = useQuery({
-        queryKey: ['Monthly leads', 1],
-        queryFn: () => listleads({ page: 1 }),
-    });
+  const { data: staffData, isLoading: isLoadingStaff } = useQuery({
+    queryKey: ['List staff'],
+    queryFn: liststaffs,
+    enabled: type === 'staffs',
+  });
 
-    // Fetch all pages of leads
-    useEffect(() => {
-        const fetchAllLeads = async () => {
-            if (!initialLeadsData || !initialLeadsData.leads) {
-                setIsFetchingAll(false);
-                setInitialLoadComplete(true);
-                return;
-            }
-
-            setIsFetchingAll(true);
-            let allFetchedLeads = [...initialLeadsData.leads];
-            const totalPages = initialLeadsData.totalPages || 1;
-
-            for (let page = 2; page <= totalPages; page++) {
-                try {
-                    const response = await listleads({ page });
-                    if (response.leads && Array.isArray(response.leads)) {
-                        allFetchedLeads = [...allFetchedLeads, ...response.leads];
-                    }
-                } catch (error) {
-                    console.error(`Error fetching page ${page}:`, error);
-                }
-            }
-
-            setAllLeads(allFetchedLeads);
-            setIsFetchingAll(false);
-            setInitialLoadComplete(true);
-        };
-
-        if (!isLoading && !isError && initialLeadsData) {
-            fetchAllLeads();
-        }
-    }, [initialLeadsData, isLoading, isError]);
-
-    const { data: Listsource } = useQuery({
-        queryKey: ['List source'],
-        queryFn: listleadsourcesettings,
-    });
-
-    const { data: Liststaff } = useQuery({
-        queryKey: ['List staff'],
-        queryFn: liststaffs,
-    });
+  const chartData = useMemo(() => {
+    if (!leadsData?.leads) return [];
 
     const now = new Date();
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const label = d.toLocaleString('default', { month: 'short' });
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        months.push({ label, key });
-    }
-
-    let data = {};
-    let labels = [];
-    let datasets = [];
+    const lastSixMonths = Array.from({ length: 6 }, (_, i) => subMonths(now, i)).reverse();
 
     if (type === 'monthly') {
-        const newLeadsCounts = {};
-        const closedLeadsCounts = {};
-
-        months.forEach(({ key }) => {
-            newLeadsCounts[key] = 0;
-            closedLeadsCounts[key] = 0;
-        });
-
-        allLeads.forEach((lead) => {
-            const createdAt = new Date(lead.createdAt);
-            const leadMonth = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-            if (newLeadsCounts[leadMonth] !== undefined) {
-                if (lead.status === 'new') {
-                    newLeadsCounts[leadMonth] += 1;
-                } else if (['closed', 'converted', 'rejected'].includes(lead.status)) {
-                    closedLeadsCounts[leadMonth] += 1;
-                }
-            }
-        });
-
-        labels = months.map((m) => m.label);
-        datasets = [
-            {
-                label: 'New Leads',
-                data: months.map((m) => newLeadsCounts[m.key]),
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1,
-                borderRadius: 6,
-                barThickness: 20,
-                maxBarThickness: 25,
-                categoryPercentage: 0.5,
-            },
-            {
-                label: 'Closed Leads',
-                data: months.map((m) => closedLeadsCounts[m.key]),
-                backgroundColor: 'rgba(255, 205, 86, 0.6)',
-                borderColor: 'rgba(255, 205, 86, 1)',
-                borderWidth: 1,
-                borderRadius: 6,
-                barThickness: 20,
-                maxBarThickness: 25,
-                categoryPercentage: 0.5,
-            },
-        ];
-    } else if (type === 'source') {
-        const sourceCounts = {};
-
-        const validSources = Array.isArray(Listsource?.getLeadsource) ? Listsource.getLeadsource : [];
-
-        validSources.forEach((src) => {
-            if (src?.title) {
-                sourceCounts[src.title] = 0;
-            }
-        });
-
-        allLeads.forEach((lead) => {
-            let sourceTitle = '';
-            if (typeof lead.source === 'string') {
-                sourceTitle = lead.source.trim();
-            } else if (typeof lead.source === 'object' && lead.source?.title) {
-                sourceTitle = lead.source.title.trim();
-            }
-            if (!sourceTitle || !sourceCounts.hasOwnProperty(sourceTitle)) return;
-
-            const createdAt = new Date(lead.createdAt);
-            const leadMonthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-            const isInLastSixMonths = months.find((m) => m.key === leadMonthKey);
-            if (isInLastSixMonths) {
-                sourceCounts[sourceTitle] += 1;
-            }
-        });
-
-        labels = Object.keys(sourceCounts);
-
-        const colorPalette = [
-            '#4dc9f6', '#f67019', '#f53794', '#537bc4',
-            '#acc236', '#166a8f', '#00a950', '#58595b',
-            '#8549ba'
-        ];
-
-        datasets = [
-            {
-                label: 'Leads by Source',
-                data: labels.map((title) => sourceCounts[title] ?? 0),
-                backgroundColor: labels.map((_, i) => colorPalette[i % colorPalette.length]),
-                borderRadius: 6,
-                barThickness: 20,
-                maxBarThickness: 25,
-                categoryPercentage: 0.5,
-            }
-        ];
-    } else if (type === 'staffs') {
-        const closedStatuses = ['closed', 'converted', 'rejected'];
-        const staffCounts = {};
-
-        // Initialize staffCounts with staff names from Liststaff
-        const validStaff = Array.isArray(Liststaff?.staffs) ? Liststaff.staffs : [];
-        validStaff.forEach((staff) => {
-            if (staff?.name) {
-                staffCounts[staff.name] = 0;
-            }
-        });
-
-        // Count closed leads per staff within the last six months
-        allLeads.forEach((lead) => {
-            let staffName = lead.assignedTo?.name || 'Unassigned'; // Adjust based on your data structure
-            if (!staffCounts.hasOwnProperty(staffName)) {
-                staffCounts[staffName] = 0;
-            }
-
-            const createdAt = new Date(lead.createdAt);
-            const leadMonthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-            const isInLastSixMonths = months.find((m) => m.key === leadMonthKey);
-
-            if (isInLastSixMonths && closedStatuses.includes(lead.status)) {
-                staffCounts[staffName] += 1;
-            }
-        });
-
-        labels = Object.keys(staffCounts);
-
-        const colorPalette = [
-            '#4dc9f6', '#f67019', '#f53794', '#537bc4',
-            '#acc236', '#166a8f', '#00a950', '#58595b',
-            '#8549ba', '#ff6384', '#36a2eb', '#cc65fe'
-        ];
-
-        datasets = [
-            {
-                label: 'Closed Leads by Staff',
-                data: labels.map((name) => staffCounts[name] ?? 0),
-                backgroundColor: labels.map((_, i) => colorPalette[i % colorPalette.length]),
-                borderRadius: 6,
-                barThickness: 20,
-                maxBarThickness: 25,
-                categoryPercentage: 0.5,
-            }
-        ];
+      return lastSixMonths.map(month => {
+        const monthStart = startOfMonth(month);
+        const monthEnd = endOfMonth(month);
+        const monthLeads = leadsData.leads.filter(lead => isWithinInterval(new Date(lead.createdAt), { start: monthStart, end: monthEnd }));
+        
+        return {
+          name: format(month, 'MMM'),
+          'New Leads': monthLeads.filter(l => l.status === 'new').length,
+          'Closed Leads': monthLeads.filter(l => ['closed', 'converted', 'rejected'].includes(l.status)).length,
+        };
+      });
     }
 
-    data = { labels, datasets };
+    if (type === 'source') {
+      if (!sourceData?.getLeadsource) return [];
+      const sourceMap = {};
+      sourceData.getLeadsource.forEach(s => { sourceMap[s._id] = s.title; });
 
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1,
-                    font: { size: 12, family: "'Inter', sans-serif" },
-                },
-            },
-            x: {
-                ticks: { font: { size: 12, family: "'Inter', sans-serif" } },
-            },
-        },
-        plugins: {
-            legend: {
-                display: type !== 'staffs',
-                position: 'top',
-                labels: {
-                    font: { family: "'Inter', sans-serif", size: 13 },
-                },
-            },
-            tooltip: {
-                backgroundColor: '#1E6DB0',
-                titleFont: { size: 14, family: "'Inter', sans-serif" },
-                bodyFont: { size: 12, family: "'Inter', sans-serif" },
-            },
-        },
-    };
+      const counts = {};
+      leadsData.leads.forEach(lead => {
+        if (lead.source && sourceMap[lead.source]) {
+          const sourceName = sourceMap[lead.source];
+          counts[sourceName] = (counts[sourceName] || 0) + 1;
+        }
+      });
+      return Object.entries(counts).map(([name, value]) => ({ name, 'Leads': value }));
+    }
 
-    return (
-        <div className="p-2 sm:p-3 bg-white rounded-xl w-full shadow-md">
-            <h2 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-gray-800">
-                {type === 'source' ? 'Lead Sources Overview'
-                    : type === 'staffs' ? 'Leads Closed by Staff'
-                        : 'Monthly Leads Overview'}
-            </h2>
-            <div
-                className={`relative w-full overflow-hidden ${type === 'source' || type === 'staffs'
-                    ? 'h-[420px] sm:h-[590px]'
-                    : 'h-[350px] sm:h-[450px]'
-                    }`}
-            >
-                <Bar data={data} options={options} />
-            </div>
-        </div>
-    );
-}
+    if (type === 'staffs') {
+        if (!staffData?.staffs) return [];
+        const closedStatuses = ['closed', 'converted', 'rejected'];
+        const counts = {};
+        staffData.staffs.forEach(s => { counts[s.name] = 0; });
+  
+        leadsData.leads.forEach(lead => {
+          if (lead.assignedTo?.name && closedStatuses.includes(lead.status)) {
+            counts[lead.assignedTo.name] = (counts[lead.assignedTo.name] || 0) + 1;
+          }
+        });
+        return Object.entries(counts).map(([name, value]) => ({ name, 'Closed Leads': value }));
+      }
+
+    return [];
+  }, [leadsData, sourceData, staffData, type]);
+
+  const isLoading = isLoadingLeads || (type === 'source' && isLoadingSources) || (type === 'staffs' && isLoadingStaff);
+
+  if (isLoading) {
+    return <Spinner />;
+  }
+
+  const renderBars = () => {
+    if (type === 'monthly') {
+      return [
+        <Bar key="new" dataKey="New Leads" fill="#36A2EB" />,
+        <Bar key="closed" dataKey="Closed Leads" fill="#FFCD56" />
+      ];
+    }
+    if (type === 'source') {
+      return <Bar dataKey="Leads" fill="#4BC0C0" />;
+    }
+    if (type === 'staffs') {
+        return <Bar dataKey="Closed Leads" fill="#FF6384" />;
+    }
+    return null;
+  }
+
+  return (
+    <div className="p-2 sm:p-3 bg-white rounded-xl w-full shadow-md">
+      <h2 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-gray-800">
+        {type === 'source' ? 'Lead Sources Overview'
+          : type === 'staffs' ? 'Leads Closed by Staff'
+            : 'Monthly Leads Overview'}
+      </h2>
+      <div style={{ width: '100%', height: 450 }}>
+        <ResponsiveContainer>
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            {renderBars()}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
 
 export default MonthlyLeadsChart;

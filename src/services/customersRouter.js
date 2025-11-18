@@ -43,6 +43,7 @@ export const listconvertedcustomers = async ({
 
 export const editcustomerdetails = async ({ customerId, customerData }) => {
     const { data } = await axios.put(`${API_URL}/customers/edit/${customerId}`, customerData, getAuthorized())
+    console.log("firstData", data)
     return data
 }
 

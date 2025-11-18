@@ -8,8 +8,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { FaUserPlus } from 'react-icons/fa'
 import { addcustomer } from '../services/customersRouter'
 import Spinner from './Spinner'
-import PhoneInput from 'react-phone-input-2'
-import 'react-phone-input-2/lib/style.css'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 
 function Addcustomermodal() {
     const dispatch = useDispatch()
@@ -90,7 +90,6 @@ function Addcustomermodal() {
                             <input
                                 type='text'
                                 name='name'
-                                value={addcustomerForm.values.name}
                                 {...addcustomerForm.getFieldProps('name')}
                                 className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
                                 placeholder='Enter the name'
@@ -102,8 +101,10 @@ function Addcustomermodal() {
                         </div>
                         <div>
                             <PhoneInput
-                                country={"us"}
-                                buttonClass="!border-gray-300 !p-3"
+                                placeholder="Enter phone number"
+                                value={addcustomerForm.values.mobile}
+                                onChange={value => addcustomerForm.setFieldValue('mobile', value)}
+                                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
                             />
                             <span className='text-red-500 text-xs block mt-1'>* required</span>
                             {addcustomerForm.touched.mobile && addcustomerForm.errors.mobile && (
@@ -114,7 +115,6 @@ function Addcustomermodal() {
                             <input
                                 type='email'
                                 name='email'
-                                value={addcustomerForm.values.email}
                                 {...addcustomerForm.getFieldProps('email')}
                                 className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
                                 placeholder='Enter the email'
@@ -125,11 +125,10 @@ function Addcustomermodal() {
                         </div>
                         <div>
                             <PhoneInput
-                                country={"us"}
+                                placeholder="Enter alternative phone number"
                                 value={addcustomerForm.values.alternativemobile}
-                                onChange={(phone) => addcustomerForm.setFieldValue("alternativemobile", phone)}
-                                inputClass="!w-full !p-3 !text-gray-800 !border !border-gray-300 !rounded-lg"
-                                buttonClass="!border-gray-300 !p-3"
+                                onChange={value => addcustomerForm.setFieldValue('alternativemobile', value)}
+                                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
                             />
                             {addcustomerForm.touched.alternativemobile && addcustomerForm.errors.alternativemobile && (
                                 <p className='text-red-500 text-xs sm:text-sm mt-1'>{addcustomerForm.errors.alternativemobile}</p>

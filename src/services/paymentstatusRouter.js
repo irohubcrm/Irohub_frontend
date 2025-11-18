@@ -1,6 +1,6 @@
 import axios from "axios";
 import { API_URL, getAuthorized } from "../utils/urls";
-import { data } from "react-router-dom";
+
 
 export const addpaymentstatus = async (paymentstatusdata) => {
   const { data } = await axios.post(`${API_URL}/paymentstatus/add`, paymentstatusdata, getAuthorized());
@@ -38,6 +38,9 @@ export const getpaymentDetailsed = async () => {
 };
 
 export const getCustomerPayments = async ({customerId}) => {
+  console.log("--- FRONTEND SERVICE HIT: getCustomerPayments ---");
+  console.log("Customer ID:", customerId);
+  console.log("API URL:", API_URL);
   const { data } = await axios.get(`${API_URL}/payment/get-customerPayments/${customerId}`, getAuthorized());
   return data;
 }

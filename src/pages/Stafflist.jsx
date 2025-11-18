@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import {
   FaBars,
@@ -29,24 +29,20 @@ import { AnimatePresence, motion } from "framer-motion";
 import { deletestaff, liststaffs, getallagents } from "../services/staffRouter";
 import Icons from "./Icons";
 import Spinner from "../components/Spinner";
-
+import toast, { Toaster } from "react-hot-toast";
 
 function Stafflist() {
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
-  const isAssignteamsmodal = useSelector(
-    (state) => state.modal.assignteamsModal
-  );
-  const isAssignleadsmodal = useSelector(
-    (state) => state.modal.assignleadsModal
-  );
+  const [sidebarVisible, setsidebarVisible] = useState(true);
+
+  const isAssignteamsmodal = useSelector((state) => state.modal.assignteamsModal);
+  const isAssignleadsmodal = useSelector((state) => state.modal.assignleadsModal);
   const isStaffmodal = useSelector((state) => state.modal.staffmodal);
   const isStaffeditmodal = useSelector((state) => state.modal.staffeditmodal);
 
   const [selectedRole, setselectedRole] = useState("Sub-Admin");
-  const [sidebarVisible, setsidebarVisible] = useState(true);
   const [showReassignModal, setshowReassignModal] = useState(false);
-  const [statussucceess, setstatussuccess] = useState(false);
   const [selectedStaffid, setselectedStaffid] = useState(null);
   const [newAgentId, setnewAgentId] = useState(null);
 
@@ -80,29 +76,23 @@ function Stafflist() {
 
   const confirmDeleteAndReassign = async () => {
     if (!newAgentId) {
-      // Handle case where no new agent is selected
+      toast.error("Please select a new agent to reassign the leads to.");
       return;
     }
     await deletestaffs.mutateAsync({ staffId: selectedStaffid, newAgentId });
     setshowReassignModal(false);
-    setstatussuccess(true);
+    toast.success("Staff deleted and leads reassigned successfully!");
     setselectedStaffid(null);
     setnewAgentId(null);
-    setTimeout(() => {
-      setstatussuccess(false);
-    }, 2000);
   };
 
-  const filteredStaff = useMemo(() => {
-    return fetchstaffs?.data?.filter(
-      (staff) => staff.role === selectedRole
-    );
-  }, [fetchstaffs.data, selectedRole]);
-
-
+  const filteredStaff = fetchstaffs?.data?.filter(
+    (staff) => staff.role === selectedRole
+  );
 
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-b from-gray-50 to-gray-100 overflow-x-hidden">
+      <Toaster />
       <div className="fixed inset-y-0 left-0 z-40">
         <motion.div
           animate={{ x: sidebarVisible ? 0 : -260 }}
@@ -162,8 +152,12 @@ function Stafflist() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {fetchstaffs.isLoading ? (
                 <Spinner />
-              ) : filteredStaff?.length > 0 ? (
-                filteredStaff.map((staff, index) => (
+              ) : fetchstaffs?.data?.filter(
+                (staff) => staff.role === selectedRole
+              ).length > 0 ? (
+                fetchstaffs?.data?.filter(
+                  (staff) => staff.role === selectedRole
+                ).map((staff, index) => (
                   <motion.div
                     key={staff._id}
                     className="bg-white relative z-10 rounded-2xl shadow-xl p-5 sm:p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100"
@@ -419,25 +413,6 @@ function Stafflist() {
                   Cancel
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-        {statussucceess && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div className="absolute inset-0 bg-gray-900 opacity-40" />
-            <motion.div
-              className="relative z-10 bg-green-100 text-green-900 px-8 sm:px-10 py-5 rounded-2xl shadow-2xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm flex items-center justify-center text-center"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-              ✅ Staff deleted successfully!
             </motion.div>
           </motion.div>
         )}

@@ -185,12 +185,11 @@ function Assignleadsmodal() {
                               onChange={(e) => handleassignleads(lead._id, e.target.checked)}
                             />
                             <div
-                              className={`w-9 sm:w-11 h-5 sm:h-6 rounded-full transition-colors duration-300 
-                              ${lead.assignedTo && lead.assignedTo?._id !== staffId ? 'bg-gray-300' : 'peer-checked:bg-green-500 bg-red-500'} 
-                              relative after:absolute after:top-[1px] sm:after:top-[2px] after:left-[1px] sm:after:left-[2px] after:bg-white after:border 
-                              after:rounded-full after:h-4 sm:after:h-5 after:w-4 sm:after:w-5 after:transition-all 
-                              peer-checked:after:translate-x-full`}
-                            ></div>
+                                                            className={`w-9 sm:w-11 h-5 sm:h-6 rounded-full transition-colors duration-300
+                                                            ${lead.assignedTo?._id === staffId ? 'bg-green-500' : lead.assignedTo ? 'bg-gray-300' : 'bg-red-500'}
+                                                            relative after:absolute after:top-[1px] sm:after:top-[2px] after:left-[1px] sm:after:left-[2px] after:bg-white after:border
+                                                            after:rounded-full after:h-4 sm:after:h-5 after:w-4 sm:after:w-5 after:transition-all
+                                                            ${lead.assignedTo?._id === staffId ? 'peer-checked:translate-x-full' : ''}`}                            ></div>
                           </label>
                         </td>
                       </tr>

@@ -29,11 +29,25 @@ function StaffDetailsModal() {
   const dispatch = useDispatch();
   const { isOpen, selectedStaffId } = useSelector((state) => state.staffDetailModal);
 
+  // Log selectedStaffId when the modal opens
+  React.useEffect(() => {
+    if (isOpen && selectedStaffId) {
+      console.log('StaffDetailsModal opened for staff ID:', selectedStaffId);
+    }
+  }, [isOpen, selectedStaffId]);
+
   const { data: staffData, isLoading: isStaffLoading } = useQuery({
     queryKey: ['staffDetails', selectedStaffId],
     queryFn: () => liststaffs().then(data => data.find(staff => staff._id === selectedStaffId)),
     enabled: isOpen && !!selectedStaffId,
   });
+
+  // Log staffData after it's fetched
+  React.useEffect(() => {
+    if (staffData) {
+      console.log('Fetched staff data:', staffData);
+    }
+  }, [staffData]);
 
   const { data: leadsData, isLoading: isLeadsLoading } = useQuery({
     queryKey: ['allLeads', selectedStaffId],
@@ -48,8 +62,22 @@ function StaffDetailsModal() {
   });
 
   const staffLeads = leadsData?.leads?.filter(lead => lead.assignedTo?._id === selectedStaffId) || [];
+  // Log raw leadsData and filtered staffLeads
+  React.useEffect(() => {
+    if (leadsData) {
+      console.log('Fetched leads data:', leadsData);
+      console.log('Filtered staff leads:', staffLeads);
+    }
+  }, [leadsData, staffLeads]);
 
   const staffTasks = tasksData?.task?.filter(task => task.assignedTo === selectedStaffId) || [];
+  // Log raw tasksData and filtered staffTasks
+  React.useEffect(() => {
+    if (tasksData) {
+      console.log('Fetched tasks data:', tasksData);
+      console.log('Filtered staff tasks:', staffTasks);
+    }
+  }, [tasksData, staffTasks]);
 
   const totalLeads = staffLeads.length;
   const newLeads = staffLeads.filter(lead => lead.status === 'new').length;

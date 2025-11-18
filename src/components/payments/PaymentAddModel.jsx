@@ -121,8 +121,9 @@ const PaymentAddModel = ({ customerId, productId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount || !date || !paymentMode)
-      return toast.error("⚠️ Please fill all fields.");
+    if (!amount || !date || !paymentMode || !receiptFile) {
+      return toast.error("⚠️ Please fill all fields and upload a receipt.");
+    }
 
     try {
       setIsUploading(true);
@@ -330,7 +331,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
                     </td>
                     <td className="p-3 capitalize">{item.paymentMode}</td>
                     <td className="p-3 text-center">
-                      {item.image ? (
+                      {item.receiptUrl ? (
                         <button
                           onClick={() => setPreviewImage(item)}
                           className={`relative group ${

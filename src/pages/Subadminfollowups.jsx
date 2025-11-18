@@ -473,7 +473,7 @@ function Subadminfollowups() {
                               <select
                                 className="border p-1 sm:p-2 rounded-md bg-gray-100 hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full"
                                 value={lead.status}
-                                disable={!!metadata}
+                                disabled={!!metadata}
                                 onChange={(e) =>
                                   handleleadchange(lead._id, e.target.value)
                                 }

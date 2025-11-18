@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import moment from "moment";
 import { listleads } from "../services/leadsRouter";
 import Spinner from "./Spinner";
 

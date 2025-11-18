@@ -65,12 +65,12 @@ function Convertedleadeditmodal() {
       toast.success("Customer updated successfully!", { id: "updateCustomer" });
 
       // ✅ Update Redux so the detail modal refreshes
-      dispatch(setSelectedCustomer(data.updatedCustomer)); // backend must return updatedCustomer
+      dispatch(setSelectedCustomer(data.edit));
 
       // ✅ Update React Query cache
       queryclient.setQueryData(["List converted customers"], (old) =>
         old?.map((customer) =>
-          customer._id === data.updatedCustomer._id ? data.updatedCustomer : customer
+          customer._id === data.edit._id ? data.edit : customer
         )
       );
 
@@ -100,16 +100,9 @@ function Convertedleadeditmodal() {
         (value) => !value || isValidPhoneNumber(value)
       )
       .required("Alternative phone number is required"),
-    email: Yup.string().matches(/.+@.+\..+/, "Invalid email format"),
-      .required("Phone number is required"),
-
-    email: Yup.string().matches(/.+@.+\..+/, "Invalid email format"),
-    whatsapp: Yup.string().test(
-        "is-valid-phone",
-        "Phone number is not valid",
-        (value) => !value || isValidPhoneNumber(value)
-      )
-      .required("whatsapp number is required"),
+    email: Yup.string()
+      .matches(/.+@.+\..+/, "Invalid email format")
+      .required("Email is required"),
     product: Yup.string(),
   });
 
@@ -186,6 +179,9 @@ function Convertedleadeditmodal() {
                   className="border-2 border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
                   placeholder="Enter the name"
                 />
+                {convertedleadeditForm.touched.name && convertedleadeditForm.errors.name ? (
+                  <div className="text-red-500 text-xs mt-1">{convertedleadeditForm.errors.name}</div>
+                ) : null}
               </div>
 
               <div>
@@ -196,6 +192,9 @@ function Convertedleadeditmodal() {
                   className="border-2 border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
                   placeholder="Enter the email"
                 />
+                {convertedleadeditForm.touched.email && convertedleadeditForm.errors.email ? (
+                  <div className="text-red-500 text-xs mt-1">{convertedleadeditForm.errors.email}</div>
+                ) : null}
               </div>
 
               {/* Mobile */}
@@ -215,6 +214,9 @@ function Convertedleadeditmodal() {
                     className="w-full px-3 py-2 rounded-lg text-sm sm:text-base focus:outline-none"
                   />
                 </div>
+                {convertedleadeditForm.touched.mobile && convertedleadeditForm.errors.mobile ? (
+                  <div className="text-red-500 text-xs mt-1">{convertedleadeditForm.errors.mobile}</div>
+                ) : null}
               </div>
 
               {/* Alternative */}
@@ -237,6 +239,9 @@ function Convertedleadeditmodal() {
                     className="w-full px-3 py-2 rounded-lg text-sm sm:text-base focus:outline-none"
                   />
                 </div>
+                {convertedleadeditForm.touched.alternativemobile && convertedleadeditForm.errors.alternativemobile ? (
+                  <div className="text-red-500 text-xs mt-1">{convertedleadeditForm.errors.alternativemobile}</div>
+                ) : null}
               </div>
 
               {/* Product */}
@@ -260,6 +265,9 @@ function Convertedleadeditmodal() {
                     </>
                   )}
                 </select>
+                {convertedleadeditForm.touched.product && convertedleadeditForm.errors.product ? (
+                  <div className="text-red-500 text-xs mt-1">{convertedleadeditForm.errors.product}</div>
+                ) : null}
               </div>
 
               <button

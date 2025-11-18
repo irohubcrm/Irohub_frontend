@@ -25,6 +25,7 @@ import {
 import PersonalDetails from "./PersonalDetails";
 import { countryCodes } from "../utils/countryCodes";
 import { Variable } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 
 const InputField = ({
   icon,
@@ -59,14 +60,14 @@ const InputField = ({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           ${
             error
-              ? "border-red-300 bg-red-50 text-white"
+              ? "border-red-500 bg-red-50 text-red-900"
               : "border-gray-200 hover:border-gray-300 bg-white"
           }
         `}
       />
     </div>
     {error && (
-      <p className="text-white-500 text-xs flex items-center gap-1">
+      <p className="text-red-500 text-xs flex items-center gap-1">
         <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
         {error}
       </p>
@@ -104,7 +105,7 @@ const SelectField = ({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           ${
             error
-              ? "border-red-300 bg-red-50"
+              ? "border-red-500 bg-red-50 text-red-900"
               : "border-gray-200 hover:border-gray-300 bg-white"
           }
           appearance-none bg-white
@@ -183,6 +184,7 @@ function CustomereditModal() {
       if (context?.previousLeads) {
         queryClient.setQueryData(["Listleads"], context.previousLeads);
       }
+      toast.error(error?.response?.data?.message || "An error occurred");
     },
 
     onSettled: () => {
@@ -210,15 +212,12 @@ function CustomereditModal() {
       .email("Invalid email format"),
     mobile: Yup.string()
       .required("Mobile is required")
-      .matches(
-        /^\+?[0-9\s]+$/,
-        "Mobile number can contain digits, spaces, and optional '+'"
-      )
+      .matches(/^[0-9\s]+$/, "Mobile number can only contain digits and spaces")
       .min(7, "Mobile number must be at least 7 digits")
       .max(15, "Mobile number must be at most 15 digits"),
     countrycode: Yup.string().required("Country code is required"),
-    source: Yup.string(),
-    location: Yup.string(),
+    source: Yup.string().required("Lead source is required"),
+    location: Yup.string().required("Location is required"),
     interestedproduct: Yup.string(),
     leadvalue: Yup.number(),
   });
@@ -251,14 +250,10 @@ function CustomereditModal() {
 
       const payload = { ...values, mobile: fullMobile };
 
-      try {
-        await updatingcustomers.mutateAsync({
-          customerId: selectedLead._id,
-          customerData: payload,
-        });
-      } catch (error) {
-        console.error("Error updating customer:", error);
-      }
+      await updatingcustomers.mutateAsync({
+        customerId: selectedLead._id,
+        customerData: payload,
+      });
     },
   });
 
@@ -268,6 +263,7 @@ function CustomereditModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <Toaster />
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -381,8 +377,6 @@ function CustomereditModal() {
                   customereditForm.touched.mobile &&
                   customereditForm.errors.mobile
                 } 
-                {...error && (
-                  <p className="text-red-500 text-xs flex items-center gap-1">{error}</p>)}
                 {...customereditForm.getFieldProps("mobile")}
               />
 
