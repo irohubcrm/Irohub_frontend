@@ -8,8 +8,8 @@ import { FaUserPlus } from 'react-icons/fa'
 import { createadmin } from '../../services/registeradminRouter'
 import { toggleregisteradminModal } from '../../redux/createadminmodalSlice'
 import Spinner from '../Spinner'
-import PhoneInput from 'react-phone-input-2'
-import 'react-phone-input-2/lib/style.css'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 
 function Registeradminmodal() {
 
@@ -86,7 +86,6 @@ function Registeradminmodal() {
                             <input
                                 type='text'
                                 name='name'
-                                value={createadminForm.values.name}
                                 {...createadminForm.getFieldProps('name')}
                                 className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
                                 placeholder='Enter the name'
@@ -101,7 +100,6 @@ function Registeradminmodal() {
                             <input
                                 type='email'
                                 name='email'
-                                value={createadminForm.values.email}
                                 {...createadminForm.getFieldProps('email')}
                                 className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
                                 placeholder='Enter the email'
@@ -114,11 +112,10 @@ function Registeradminmodal() {
 
                         <div>
                             <PhoneInput
-                                country={"us"}
+                                placeholder="Enter phone number"
                                 value={createadminForm.values.mobile}
-                                onChange={(phone) => createadminForm.setFieldValue("mobile", phone)}
-                                inputClass="!w-full !p-3 !text-gray-800 !border !border-gray-300 !rounded-lg"
-                                buttonClass="!border-gray-300"
+                                onChange={value => createadminForm.setFieldValue('mobile', value)}
+                                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
                             />
                             <span className='text-red-500 text-xs block mt-1'>* required</span>
                             {createadminForm.touched.mobile && createadminForm.errors.mobile && (
@@ -130,7 +127,6 @@ function Registeradminmodal() {
                             <input
                                 type='password'
                                 name='password'
-                                value={createadminForm.values.password}
                                 {...createadminForm.getFieldProps('password')}
                                 className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
                                 placeholder='Enter the password'

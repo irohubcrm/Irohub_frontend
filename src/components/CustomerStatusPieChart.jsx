@@ -1,16 +1,14 @@
 import React from 'react';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js';
-import { Pie } from 'react-chartjs-2';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { listconvertedcustomers } from '../services/customersRouter';
 import Spinner from './Spinner';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+const COLORS = {
+  success: '#10B981',
+  failed: '#EF4444',
+  unknown: '#6B7280',
+};
 
 const CustomerStatusPieChart = () => {
   const { data: customers = [], isLoading, error } = useQuery({
@@ -34,40 +32,12 @@ const CustomerStatusPieChart = () => {
     else statusCount.unknown++;
   });
 
-  const chartData = {
-    labels: [
-      `Success: ${statusCount.success}`,
-      `Failed: ${statusCount.failed}`,
-      `Unknown: ${statusCount.unknown}`
-    ],
-    datasets: [
-      {
-        data: [
-          statusCount.success,
-          statusCount.failed,
-          statusCount.unknown
-        ],
-        backgroundColor: ['#10B981', '#EF4444', '#6B7280'], // green, red, gray
-        borderWidth: 1
-      }
-    ]
-  };
+  const chartData = [
+    { name: 'Success', value: statusCount.success },
+    { name: 'Failed', value: statusCount.failed },
+    { name: 'Unknown', value: statusCount.unknown },
+  ].filter(entry => entry.value > 0);
 
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: { position: 'bottom' },
-      tooltip: {
-        callbacks: {
-          label: context => {
-            const label = context.label || '';
-            const value = context.raw || 0;
-            return `${label}`;
-          }
-        }
-      }
-    }
-  };
 
   if (isLoading) return <Spinner />;
   if (error) return <p>Error loading chart.</p>;
@@ -80,10 +50,27 @@ const CustomerStatusPieChart = () => {
   return (
     <div className="p-6 bg-white shadow rounded-xl max-w-md mx-auto">
       <h2 className="text-xl font-bold mb-4 text-center">Customer Status</h2>
-      <div className="w-full flex justify-center">
-        <div className="w-64 h-64">
-          <Pie data={chartData} options={options} />
-        </div>
+      <div style={{ width: '100%', height: 300 }}>
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[entry.name.toLowerCase()]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

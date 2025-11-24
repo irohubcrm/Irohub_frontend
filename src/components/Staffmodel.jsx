@@ -10,13 +10,12 @@ import { FaUserPlus } from "react-icons/fa";
 import { createstaff } from "../services/staffRouter";
 import Spinner from "./Spinner";
 import { countryCodes } from "../utils/countryCodes";
+import toast, { Toaster } from "react-hot-toast";
 
 function Staffmodel() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const queryclient = useQueryClient();
-
-  const [showsuccess, setshowsuccess] = useState(false);
 
   const staff = useMutation({
     mutationKey: ["create staff"],
@@ -53,21 +52,32 @@ function Staffmodel() {
     },
     validationSchema: staffvalidation,
     onSubmit: async (values) => {
-      const payload = {
-        ...values,
-        mobile: `${values.countryCode}${values.mobile}`,
-      };
-      await staff.mutateAsync(payload);
-      setshowsuccess(true);
-      setTimeout(() => {
-        dispatch(togglestaffmodal(null));
-        setshowsuccess(false);
-      }, 1000);
+      try {
+        await staffvalidation.validate(values, { abortEarly: false });
+        const payload = {
+          ...values,
+          mobile: `${values.countryCode}${values.mobile}`,
+        };
+        await staff.mutateAsync(payload);
+        toast.success("Staff added successfully!");
+        setTimeout(() => {
+          dispatch(togglestaffmodal(null));
+        }, 1000);
+      } catch (error) {
+        if (error.inner) {
+          error.inner.forEach((err) => {
+            toast.error(err.message);
+          });
+        } else {
+          toast.error("An unexpected error occurred.");
+        }
+      }
     },
   });
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4 sm:p-0">
+      <Toaster />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -115,14 +125,10 @@ function Staffmodel() {
                 className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
                 placeholder="Enter the name"
               />
-              {createStaffform.touched.name && createStaffform.errors.name ? (
+              {createStaffform.touched.name && createStaffform.errors.name && (
                 <p className="text-red-500 text-xs sm:text-sm mt-1">
                   {createStaffform.errors.name}
                 </p>
-              ) : (
-                <span className="text-red-500 text-xs block mt-1">
-                  * required
-                </span>
               )}
             </div>
 
@@ -137,14 +143,10 @@ function Staffmodel() {
                 <option value="Sub-Admin">Sub-Admin</option>
                 <option value="Agent">Agent</option>
               </select>
-              {createStaffform.touched.role && createStaffform.errors.role ? (
+              {createStaffform.touched.role && createStaffform.errors.role && (
                 <p className="text-red-500 text-xs sm:text-sm mt-1">
                   {createStaffform.errors.role}
                 </p>
-              ) : (
-                <span className="text-red-500 text-xs block mt-1">
-                  * required
-                </span>
               )}
             </div>
 
@@ -157,49 +159,52 @@ function Staffmodel() {
                 className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
                 placeholder="Enter the email"
               />
-              {createStaffform.touched.email && createStaffform.errors.email ? (
+              {createStaffform.touched.email && createStaffform.errors.email && (
                 <p className="text-red-500 text-xs sm:text-sm mt-1">
                   {createStaffform.errors.email}
                 </p>
-              ) : (
-                <span className="text-red-500 text-xs block mt-1">
-                  * required
-                </span>
               )}
             </div>
 
             {/* Mobile Number + Country Code */}
             <div className="flex items-center gap-2">
-              <select
-                name="countryCode"
-                id="countryCode"
-                {...createStaffform.getFieldProps("countryCode")}
-                className="w-28 border border-gray-300 p-2 sm:p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-              >
-                {countryCodes.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.flag} {country.code}
-                  </option>
-                ))}
-              </select>
+              <div className="flex-grow-0">
+                <select
+                  name="countryCode"
+                  id="countryCode"
+                  {...createStaffform.getFieldProps("countryCode")}
+                  className="w-28 border border-gray-300 p-2 sm:p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
+                >
+                  {countryCodes.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.flag} {country.code}
+                    </option>
+                  ))}
+                </select>
+                {createStaffform.touched.countryCode &&
+                  createStaffform.errors.countryCode && (
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">
+                      {createStaffform.errors.countryCode}
+                    </p>
+                  )}
+              </div>
 
-              <input
-                type="text"
-                name="mobile"
-                {...createStaffform.getFieldProps("mobile")}
-                className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                placeholder="Enter the mobile number"
-              />
+              <div className="flex-grow">
+                <input
+                  type="text"
+                  name="mobile"
+                  {...createStaffform.getFieldProps("mobile")}
+                  className="border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
+                  placeholder="Enter the mobile number"
+                />
+                {createStaffform.touched.mobile &&
+                  createStaffform.errors.mobile && (
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">
+                      {createStaffform.errors.mobile}
+                    </p>
+                  )}
+              </div>
             </div>
-            {createStaffform.touched.mobile && createStaffform.errors.mobile ? (
-              <p className="text-red-500 text-xs sm:text-sm mt-1">
-                {createStaffform.errors.mobile}
-              </p>
-            ) : (
-              <span className="text-red-500 text-xs block mt-1">
-                * required
-              </span>
-            )}
 
             {/* Submit Button */}
             <button
@@ -211,27 +216,7 @@ function Staffmodel() {
           </form>
         </div>
       </motion.div>
-      <AnimatePresence>
-        {showsuccess && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div className="absolute inset-0 bg-black opacity-30" />
-            <motion.div
-              className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[100px] sm:h-[120px] flex items-center justify-center text-center"
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.5 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-              ✅ Staff added successfully!
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }

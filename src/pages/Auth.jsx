@@ -16,6 +16,7 @@ import Passwordmodal from '../components/passwordcomponents/Passwordmodal'
 import Registeradminmodal from '../components/Admincomponents/Registeradminmodal'
 import { toggleregisteradminModal } from '../redux/createadminmodalSlice'
 import { countadmin } from '../services/registeradminRouter'
+import toast, { Toaster } from 'react-hot-toast'
 
 function Auth() {
     const navigate = useNavigate()
@@ -51,8 +52,8 @@ function Auth() {
     })
 
     const loginvalidation = Yup.object({
-        email: Yup.string().required("Email is required"),
-        password: Yup.string().required("Password is required")
+        email: Yup.string().email("Invalid email format").required("Email is required"),
+        password: Yup.string().min(6, "Password must be at least 6 characters").required("Password is required")
     })
 
     const loginForm = useFormik({
@@ -62,12 +63,24 @@ function Auth() {
         },
         validationSchema: loginvalidation,
         onSubmit: async (values) => {
-            await modulelogin.mutateAsync(values)
+            try {
+                await loginvalidation.validate(values, { abortEarly: false });
+                await modulelogin.mutateAsync(values)
+            } catch (error) {
+                if (error.inner) {
+                    error.inner.forEach((err) => {
+                        toast.error(err.message);
+                    });
+                } else {
+                    toast.error(error.response?.data?.message || "An unexpected error occurred.");
+                }
+            }
         }
     })
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-[#00B5A6] to-[#1E6DB0]">
+            <Toaster />
             <motion.div
                 initial={{ opacity: 0, x: -100 }}
                 animate={{ opacity: 1, x: 0 }}

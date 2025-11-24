@@ -11,18 +11,14 @@ import { listleadsourcesettings } from "../services/settingservices/leadSourceSe
 import Spinner from "./Spinner";
 import { getProducts } from "../services/paymentstatusRouter";
 
-// ✅ New Import
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/bootstrap.css";
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 function Customermodal() {
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
 
   const [showsuccess, setshowsuccess] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [countryCode, setCountryCode] = useState("");
-  const [isValid, setIsValid] = useState(true);
 
   // ✅ Fetch lead sources
   const fetchleadsource = useQuery({
@@ -48,7 +44,6 @@ function Customermodal() {
   });
 
   // ✅ Validation schema
-  // ✅ Validation schema
   const customerformvalidation = Yup.object({
     name: Yup.string()
       .required("Name is required")
@@ -60,13 +55,7 @@ function Customermodal() {
       .email("Invalid email format"),
 
     mobile: Yup.string()
-      .required("Mobile number is required")
-      .matches(
-        /^\+?[1-9]\d{6,14}$/,
-        "Enter a valid international phone number (e.g., +14155552671)"
-      ),
-
-    countryCode: Yup.string().required("Country code is required"),
+      .required("Mobile number is required"),
 
     source: Yup.string(),
     location: Yup.string(),
@@ -83,24 +72,13 @@ function Customermodal() {
       source: "",
       location: "",
       requiredProductType: "",
-      countryCode: "+91",
       leadValue: "",
     },
     validationSchema: customerformvalidation,
 
     onSubmit: async (values) => {
-      // 🧹 Ensure the number starts with '+'
-      let mobile = values.mobile.replace(/\s+/g, "");
-      if (!mobile.startsWith("+")) {
-        mobile = `${values.countryCode}${mobile}`;
-      }
-
-      // 🧹 Remove any accidental duplicate '+' or double code
-      mobile = mobile.replace(/\++/g, "+").replace(/(\+\d+)\1+/, "$1");
-
-      const payload = { ...values, mobile };
-
-      await addingcustomers.mutateAsync(payload);
+      await addingcustomers.mutateAsync(values);
+      console.log(values);
       setshowsuccess(true);
       setTimeout(() => {
         dispatch(toggleCustomermodal());
@@ -108,16 +86,6 @@ function Customermodal() {
       }, 1000);
     },
   });
-
-  // ✅ Handle phone change dynamically
-  const handlePhoneChange = (value, country) => {
-    setPhone(value);
-    const dialCode = `+${country.dialCode}`;
-    setCountryCode(dialCode);
-
-    const cleaned = value.replace(/\s+/g, "");
-    customerForm.setFieldValue("mobile", cleaned);
-  };
 
   const filteredsource = fetchleadsource?.data?.getLeadsource?.filter(
     (source) => source.active
@@ -174,42 +142,17 @@ function Customermodal() {
               )}
             </div>
 
-            {/* ✅ Country Code + Mobile Field */}
+            {/* ✅ Phone Number Field */}
             <div>
               <PhoneInput
-                country={"in"}
-                value={phone}
-                onChange={(value, country) => {
-                  // Always store full international format with '+'
-                  const formattedValue = `+${value.replace(/\s+/g, "")}`;
-
-                  setPhone(formattedValue);
-                  const dialCode = `+${country.dialCode}`;
-                  setCountryCode(dialCode);
-
-                  // Extract only the national number part
-                  const nationalNumber = formattedValue.replace(dialCode, "");
-
-                  // Validate length and format
-                  const regex = /^\d{6,15}$/;
-                  const valid = regex.test(nationalNumber);
-                  setIsValid(valid);
-
-                  // Save full formatted number in Formik
-                  customerForm.setFieldValue("mobile", formattedValue);
-                  customerForm.setFieldValue("countryCode", dialCode);
-                }}
-                enableSearch
-                inputClass="!w-full !pl-16 !pr-4 !py-3 !text-gray-800 !border !border-gray-300 !rounded-lg focus:!ring-2 focus:!ring-blue-400"
-                buttonClass="!border-gray-300 !bg-white !rounded-l-lg !p-3"
-                containerClass="!w-full"
-                dropdownClass="!text-gray-800"
                 placeholder="Enter phone number"
+                value={customerForm.values.mobile}
+                onChange={value => customerForm.setFieldValue('mobile', value)}
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
               />
-
-              {!isValid && (
-                <p className="text-red-500 text-sm mt-2">
-                  ⚠️ Please enter a valid phone number for selected country
+              {customerForm.touched.mobile && customerForm.errors.mobile && (
+                <p className="text-red-500 text-sm mt-1">
+                  {customerForm.errors.mobile}
                 </p>
               )}
             </div>
