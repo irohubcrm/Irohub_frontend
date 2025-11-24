@@ -38,6 +38,9 @@ import Convertedleadeditmodal from "./Convertedleadeditmodal";
 import { getnextfollowup } from "../services/nextfollowupRouter";
 import { User } from "lucide-react";
 import { getpaymentDetails } from "../services/paymentstatusRouter";
+import FollowupLead from "./FollowupLead";
+import { getFollowupsByLead } from "../services/followupRouter";
+
 // import { getallpaymentstatus, getallpaymentstatus } from "../services/paymentstatusRouter";
 
 function Customerdetailmodal() {
@@ -66,14 +69,30 @@ function Customerdetailmodal() {
   const [currentpage, setCurrentPage] = useState(1);
   const scrollContainerRef = useRef(null);
   const leadsperpage = 10;
+  const [showFollowup, setShowFollowup] = useState(false);
+  const {
+    data: paymentDetailsData,
+    isLoading: isPaymentDetailsLoading,
+    isError: isPaymentDetailsError,
+    error: paymentDetailsError,
+  } = useQuery({
+    queryKey: ["paymentDetails", selectedlead?._id], // ✅ Dynamic key
+    queryFn: () => getpaymentDetails(selectedlead?._id), // ✅ Pass lead ID
+    enabled: !!selectedlead?._id, // ✅ Only run when lead selected
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+  });
 
-const { data: paymentDetailsData, isLoading: isPaymentDetailsLoading, isError: isPaymentDetailsError, error: paymentDetailsError } = useQuery({
-  queryKey: ["paymentDetails", selectedlead?._id], // ✅ Dynamic key
-  queryFn: () => getpaymentDetails(selectedlead?._id), // ✅ Pass lead ID
-  enabled: !!selectedlead?._id, // ✅ Only run when lead selected
-  staleTime: 5 * 60 * 1000,
-  retry: 2,
-});
+  const [followups, setFollowups] = useState([]);
+
+  // ✅ Fetch followups when selected lead changes
+  useEffect(() => {
+    if (selectedlead?._id) {
+      getFollowupsByLead(selectedlead._id)
+        .then((res) => setFollowups(res))
+        .catch((err) => console.error("Failed to load followups:", err));
+    }
+  }, [selectedlead, showFollowup]);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["listleadss"],
@@ -81,8 +100,6 @@ const { data: paymentDetailsData, isLoading: isPaymentDetailsLoading, isError: i
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
-
- 
 
   const deletingLeads = useMutation({
     mutationKey: ["Deleting Leads"],
@@ -92,15 +109,12 @@ const { data: paymentDetailsData, isLoading: isPaymentDetailsLoading, isError: i
     },
   });
 
-  
   // Inside Customerdetailmodal
   const { data: followupsData, isLoading: isFollowupsLoading } = useQuery({
     queryKey: ["followups", selectedlead?._id],
     queryFn: () => getnextfollowup(selectedlead?._id),
     enabled: !!selectedlead?._id,
   });
-
-
 
   const markFollowupDone = useMutation({
     mutationKey: ["Mark Followup Done"],
@@ -114,7 +128,7 @@ const { data: paymentDetailsData, isLoading: isPaymentDetailsLoading, isError: i
   const handleMarkDone = (id) => {
     markFollowupDone.mutate(id);
   };
-const canEdit =
+  const canEdit =
     metadata?.permissions?.includes("editLead") ||
     ["Admin", "Sub-Admin", "Agent"].includes(role);
   const canDelete =
@@ -177,7 +191,6 @@ const canEdit =
       queryclient.invalidateQueries(["List Form Fields"]);
     },
   });
-  
 
   const handleconfirm = () => setshowconfirm(true);
   const closeconfirm = () => setshowconfirm(false);
@@ -224,12 +237,16 @@ const canEdit =
     };
   }, [dispatch]);
   const handlenextfollowup = async () => {
-    if (!nextFollowupdate) return;
+    if (!nextFollowupdate) {
+      setdateerror("Please select a date");
+      return;
+    }
 
     const selectedDate = new Date(nextFollowupdate);
     const today = new Date();
     selectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
+
     if (selectedDate < today) {
       setdateerror("Next follow-up date cannot be in the past");
       return;
@@ -237,16 +254,29 @@ const canEdit =
 
     setdateerror("");
 
-    await updatingnextfollowup.mutateAsync({
-      id: selectedlead._id,
-      nextFollowUp: nextFollowupdate,
-    });
-    setfollowupsuccess(true);
-    setTimeout(() => {
-      setfollowupsuccess(false);
-      dispatch(toggleCustomerdetailmodal(null));
-    }, 2000);
+    try {
+      await updatingnextfollowup.mutateAsync({
+        id: selectedlead._id,
+        nextFollowUp: [
+          {
+            nextFollowUpDate: nextFollowupdate,
+            description: "Follow-up scheduled",
+            status: "pending",
+          },
+        ],
+      });
+
+      setfollowupsuccess(true);
+      setTimeout(() => {
+        setfollowupsuccess(false);
+        dispatch(toggleCustomerdetailmodal(null));
+      }, 2000);
+    } catch (err) {
+      console.error("Error updating follow-up:", err);
+      setdateerror("Something went wrong while updating follow-up.");
+    }
   };
+
   const filteredleadform = fetchleadforms?.data?.getLeadform?.filter(
     (leadform) => leadform.active
   );
@@ -464,11 +494,11 @@ const canEdit =
 
             <div className="px-4 sm:px-6 pt-4 pb-3  ">
               <div className="flex border-b border-gray-300 bg-white shadow-sm rounded-t-xl overflow-hidden">
-                {["personal", "followups"].map((tab) => (
+                {["personal", "details", "followups"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex-1 px-6 py-3 text-center    font-medium transition-all duration-200 
+                    className={`flex-1 px-6 py-3 text-center  font-medium transition-all duration-200 
         ${
           activeTab === tab
             ? "bg-blue-600 text-white shadow-inner hover:scale-[1.02]"
@@ -478,6 +508,11 @@ const canEdit =
                     {tab === "personal" && (
                       <span className="text-sm sm:text-base  font-semibold tracking-wide">
                         Personal Details
+                      </span>
+                    )}
+                    {tab === "details" && (
+                      <span className=" text-sm sm:text-base font-semibold tracking-wide">
+                        Details
                       </span>
                     )}
                     {tab === "followups" && (
@@ -507,7 +542,7 @@ const canEdit =
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 text-sm">
+                      <div className="flex items-center gap-3 text-sm mb-6">
                         <FontAwesomeIcon
                           icon={faTag}
                           className="text-[#00B5A6] w-5 h-5"
@@ -519,8 +554,11 @@ const canEdit =
                           </p>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="flex items-center gap-3 text-sm">
+                    {/* Right Section */}
+                    <div className="flex-col  sm:justify-end items-center gap-3 text-sm">
+                      <div className="flex items-center gap-3 text-sm mb-6">
                         <FontAwesomeIcon
                           icon={faDollarSign}
                           className="text-[#00B5A6] w-5 h-5"
@@ -532,28 +570,141 @@ const canEdit =
                           </p>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Right Section */}
-                    <div className="flex sm:justify-end items-center gap-3 text-sm">
-                      <FontAwesomeIcon
-                        icon={faCalendar}
-                        className="text-[#00B5A6] w-5 h-5"
-                      />
-                      <div>
-                        <p className="text-gray-500 text-xs">Date</p>
-                        <p className="font-semibold text-gray-800">
-                          {selectedlead?.createdAt
-                            ? new Date(
-                                selectedlead.createdAt
-                              ).toLocaleDateString("en-US")
-                            : "N/A"}
-                        </p>
+                      <div className="flex gap-2">
+                        <FontAwesomeIcon
+                          icon={faCalendar}
+                          className="text-[#00B5A6] w-5 h-5"
+                        />
+                        <div>
+                          <p className="text-gray-500 text-xs">Date</p>
+                          <p className="font-semibold text-gray-800">
+                            {selectedlead?.createdAt
+                              ? new Date(
+                                  selectedlead.createdAt
+                                ).toLocaleDateString("en-US")
+                              : "N/A"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Follow-up Section */}
+
+                  {/* Update Toggle */}
+
+                  {/* Update Form */}
+                </div>
+              )}
+              {activeTab === "details" && (
+                <div className=" bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-6 max-h-[600px] overflow-y-auto transition-all duration-300">
+                  {selectedlead ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-100 text-sm text-gray-800 rounded-lg overflow-hidden">
+                        {/* Table Header */}
+                        <thead className="bg-gradient-to-r from-[#00B5A6]/30 to-[#0077B6]/30">
+                          <tr className="text-[#004E48] font-semibold uppercase tracking-wide text-[13px]">
+                            <th className="px-6 py-4 text-left">Agent</th>
+                            <th className="px-6 py-4 text-left">Description</th>
+                            <th className="px-6 py-4 text-left">
+                              Enquiry Program
+                            </th>
+                            <th className="px-6 py-4 text-left">
+                              Required Program
+                            </th>
+                            <th className="px-6 py-4 text-left">WhatsApp</th>
+                            <th className="px-6 py-4 text-left">Status</th>
+                          </tr>
+                        </thead>
+
+                        {/* Table Body */}
+                        <tbody className="divide-y divide-gray-200">
+                          <tr className=" transition-all duration-200 even:bg-gray-50">
+                            {/* Agent */}
+                            <td className="px-6 py-3 text-[#0077B6] font-semibold whitespace-nowrap">
+                              {/* {selectedlead.nextfollowupupdatedBy?.name ||
+                                selectedlead.nextfollowupupdatedBy ||
+                                "Not updated"} */}
+                                 {selectedlead.assignedTo?.name ||
+                                "N/A"}
+                                {console.log("selecteedLEad",selectedlead)}
+                            </td>
+
+                            {/* Description */}
+                            <td className="px-6 py-3 text-gray-700 max-w-[250px] break-words leading-relaxed">
+                              {selectedlead.userDetails?.[2]?.value &&
+                              selectedlead.userDetails?.[2]?.value !==
+                                "undefined"
+                                ? selectedlead.userDetails[2].value
+                                : "No data"}
+                            </td>
+
+                            {/* Enquiry Program */}
+                            <td className="px-6 py-3 text-[#2563EB] font-semibold">
+                              {selectedlead.userDetails?.[4]?.value &&
+                              selectedlead.userDetails?.[4]?.value !==
+                                "undefined"
+                                ? selectedlead.userDetails[4].value
+                                : "No program"}
+                            </td>
+
+                            {/* Required Program */}
+                            <td className="px-6 py-3 text-[#2563EB]  font-semibold">
+                              {selectedlead.userDetails?.[1]?.value &&
+                              selectedlead.userDetails?.[1]?.value !==
+                                "undefined"
+                                ? selectedlead.userDetails[1].value
+                                : "No program"}
+                            </td>
+
+                            {/* WhatsApp */}
+                            <td className="px-6 py-3 text-[#059669] font-semibold">
+                              {selectedlead.userDetails?.[0]?.value &&
+                              selectedlead.userDetails?.[0]?.value !==
+                                "undefined"
+                                ? selectedlead.userDetails[0].value
+                                : "Nil"}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-6 py-3 capitalize">
+                              <span
+                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm
+                    ${
+                      selectedlead.status === "completed"
+                        ? "bg-green-100 text-green-700 border-green-300"
+                        : selectedlead.status === "pending"
+                        ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                        : selectedlead.status === "cancelled"
+                        ? "bg-red-100 text-red-700 border-red-300"
+                        : "bg-gray-100 text-gray-700 border-gray-300"
+                    }`}
+                              >
+                                {selectedlead.status || "N/A"}
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-8 italic">
+                      No follow-up data available
+                    </p>
+                  )}
+                </div>
+              )}
+              {activeTab === "followups" && (
+                <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl rounded-t-[0px] shadow-lg border border-gray-200 p-6  transition-all duration-300">
+                  <div className="mt-[10px] ml-[500px] mb-[10px] ">
+                    <button
+                      className="w-[150px] inline-flex items-center justify-center gap-2 bg-[#00B5A6] hover:bg-[#1E6DB0] text-white text-sm px-5 py-2.5 rounded-lg font-semibold shadow-md transition-all duration-300 hover:scale-105"
+                      onClick={() => setShowFollowup(true)}
+                    >
+                      Follow-up
+                    </button>
+                  </div>
+
                   {fetchnextfollowup?.data?.setting?.isnextfollowupActive &&
                     (selectedlead?.status === "new" ||
                       selectedlead?.status === "open") && (
@@ -568,10 +719,12 @@ const canEdit =
                         </h3>
 
                         {/* Date Info */}
-                        <p className="text-xl font-bold text-gray-800 mb-4 ">
-                          {selectedlead?.nextFollowUp && !isDateover
+                        <p className="text-xl font-bold text-gray-800 mb-4">
+                          {selectedlead?.nextFollowUp?.length > 0
                             ? new Date(
-                                selectedlead.nextFollowUp
+                                selectedlead.nextFollowUp[
+                                  selectedlead.nextFollowUp.length - 1
+                                ]?.nextFollowUpDate
                               ).toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "short",
@@ -581,7 +734,7 @@ const canEdit =
                         </p>
 
                         {/* Input & Button */}
-                        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 ">
+                        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
                           <input
                             id="followupDate"
                             type="date"
@@ -593,12 +746,7 @@ const canEdit =
                             className="px-4 py-2 w-44 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-[#00B5A6] focus:border-[#00B5A6] disabled:bg-gray-100 transition-transform duration-200 hover:scale-[1.02]"
                           />
 
-                          {isdisabled ? (
-                            <span className="text-red-500 text-sm font-medium">
-                              Updated by{" "}
-                              {selectedlead?.nextfollowupupdatedBy?.name}
-                            </span>
-                          ) : (
+                          {!isdisabled && (
                             <button
                               type="button"
                               onClick={handlenextfollowup}
@@ -616,174 +764,94 @@ const canEdit =
                             {dateerror}
                           </p>
                         )}
+
+                        {/* Success */}
+                        {followupsuccess && (
+                          <p className="text-green-600 text-sm mt-3 font-medium">
+                            Follow-up date set successfully!
+                          </p>
+                        )}
                       </div>
                     )}
 
-                  {/* Update Toggle */}
+                  <div className="overflow-x-auto mt-[10px]">
+                    <table className="min-w-full border border-gray-200 text-sm text-gray-800">
+                      <thead className="bg-gradient-to-r from-[#00B5A6]/20 to-[#0077B6]/20 border-b border-gray-300">
+                        <tr className="text-[#004e48] font-semibold tracking-wide">
+                          <th className="px-5 py-3 text-left">
+                            Next Follow-Up
+                          </th>
+                          <th className="px-5 py-3 text-left">Agent</th>
+                          <th className="px-5 py-3 text-left">Description</th>
+                          <th className="px-5 py-3 text-left">Created Date</th>
+                        </tr>
+                      </thead>
 
-                  
-
-                  {/* Update Form */}
-                  
-                </div>
-              )}
- {/* ........................................................................................................ */}
-              {/* {activeTab === "payment" && (
-                <div className="bg-white rounded-2xl rounded-t-[0px] shadow-md border border-gray-200 p-6  max-h-[600px] overflow-y-auto">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">
-                    Payment Details
-                  </h2>
-
-                  <div className="grid sm:grid-cols-2 gap-6">
-                    {[
-                      { label: "Course Name", value: selectedlead?.courseName },
-                      {
-                        label: "Course Duration",
-                        value: selectedlead?.courseDuration,
-                      },
-                      { label: "Total Fees", value: selectedlead?.courseFees },
-                      {
-                        label: "Total Payment",
-                        value: selectedlead?.totalpayment,
-                      },
-                      { label: "Due Amount", value: selectedlead?.DueAmount },
-                      {
-                        label: "Last Payment Date",
-                        value: selectedlead?.lastPaymentDate
-                          ? new Date(
-                              selectedlead.lastPaymentDate
-                            ).toLocaleDateString()
-                          : "N/A",
-                      },
-                      {
-                        label: "Payment Mode",
-                        value: selectedlead?.paymentMode,
-                      },
-                    ].map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between bg-gray-50 p-3 rounded-lg shadow-sm"
-                      >
-                        <strong>{item.label}:</strong>
-                        <span>{item.value || "N/A"}</span>
-                      </div>
-                    ))}
+                      <tbody className="divide-y divide-gray-200">
+                        {followups?.length > 0 ? (
+                          followups.map((f, i) => (
+                            <tr
+                              key={i}
+                              className="transition-all duration-200 even:bg-gray-50 hover:bg-gray-100"
+                            >
+                              <td className="px-6 py-3 text-gray-700 font-medium whitespace-nowrap">
+                                {f.nextFollowUpDate
+                                  ? new Date(
+                                      f.nextFollowUpDate
+                                    ).toLocaleDateString("en-GB")
+                                  : "-"}
+                              </td>
+                              <td className="px-6 py-3 text-[#0077B6] font-semibold whitespace-nowrap">
+                                {selectedlead?.createdBy?.name || "N/A"}
+                              </td>
+                              <td className="px-6 py-3 text-gray-700 text-left">
+                                {f.description || "-"}
+                              </td>
+                              <td className="px-6 py-3 text-gray-700 font-medium whitespace-nowrap">
+                                {new Date(f.createdAt).toLocaleDateString(
+                                  "en-GB"
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan="4"
+                              className="text-center py-5 text-gray-500 font-medium"
+                            >
+                              No follow-up records available
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
-              )} */}
-              {/* follow ups updates */}
-              {/* Follow-ups Tab */}
-              {/* Follow-ups Tab */}
-              {/* .............................................................................................................. */}
-              {activeTab === "followups" && (
-                <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl rounded-t-[0px] shadow-lg border border-gray-200 p-6 max-h-[600px] overflow-y-auto transition-all duration-300">
-                  {selectedlead ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-200 text-sm text-gray-800">
-                        {/* Table Header */}
-                        <thead className="bg-gradient-to-r from-[#00B5A6]/20 to-[#0077B6]/20 border-b border-gray-300">
-                          <tr className="text-[#004e48] font-semibold tracking-wide">
-                            <th className="px-5 py-3 text-left">📅 Date</th>
-                            <th className="px-5 py-3 text-left">👩‍💼 Agent</th>
-                            <th className="px-5 py-3 text-left">
-                              📝 Description
-                            </th>
-                            <th className="px-5 py-3 text-left">
-                              Enquiry Program
-                            </th>
-                            <th className="px-5 py-3 text-left">
-                              Required Program
-                            </th>
-                            <th className="px-5 py-3 text-left"> Whatsapp</th>
-                            <th className="px-5 py-3 text-left"> Status</th>
-                          </tr>
-                        </thead>
 
-                        {/* Table Body */}
-                        <tbody className="divide-y divide-gray-200">
-                          <tr className="hover:bg-[#E6FFFA] transition-all duration-200 even:bg-[#F9FAFB]">
-                            {/* Date */}
-                            <td className="px-5 py-3 text-gray-700 font-medium">
-                              {selectedlead.nextFollowUp
-                                ? new Date(
-                                    selectedlead.nextFollowUp
-                                  ).toLocaleDateString("en-GB")
-                                : "-"}
-                            </td>
-
-                            {/* Agent */}
-                            <td className="px-5 py-3 text-[#0077B6] font-medium">
-                              {selectedlead.nextfollowupupdatedBy?.name ||
-                                selectedlead.nextfollowupupdatedBy ||
-                                "Not updated"}
-                            </td>
-
-                            <td className="px-5 py-3 text-gray-700 break-words max-w-[200px]">
-                              {selectedlead.userDetails?.[2]?.value &&
-                              selectedlead.userDetails?.[2]?.value !==
-                                "undefined"
-                                ? selectedlead.userDetails[2].value
-                                : "No data"}
-                            </td>
-
-                            {/* Enquiry Program */}
-                            <td className="px-5 py-3 text-[#2563EB] font-medium">
-                              {selectedlead.userDetails?.[4]?.value &&
-                              selectedlead.userDetails?.[4]?.value !==
-                                "undefined"
-                                ? selectedlead.userDetails[4].value
-                                : "No program"}
-                            </td>
-
-                            {/* Required Program */}
-                            <td className="px-5 py-3 text-[#9333EA] font-medium">
-                              {selectedlead.userDetails?.[1]?.value &&
-                              selectedlead.userDetails?.[1]?.value !==
-                                "undefined"
-                                ? selectedlead.userDetails[1].value
-                                : "No program"}
-                            </td>
-                            
-
-                            {/* Whatsapp Number */}
-                            <td className="px-5 py-3 text-[#059669] font-medium">
-                              {selectedlead.userDetails?.[0]?.value &&
-                              selectedlead.userDetails?.[0]?.value !==
-                                "undefined"
-                                ? selectedlead.userDetails[0].value
-                                : "Nil"}
-                            </td>
-
-                            {/* Status */}
-                            <td className="px-5 py-3 capitalize">
-                              <span
-                                className={`px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${
-                                  selectedlead.status === "completed"
-                                    ? "bg-green-100 text-green-700 border border-green-300"
-                                    : selectedlead.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-                                    : selectedlead.status === "cancelled"
-                                    ? "bg-red-100 text-red-700 border border-red-300"
-                                    : "bg-gray-100 text-gray-700 border border-gray-300"
-                                }`}
-                              >
-                                {selectedlead.status || "N/A"}
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-4">
-                      No follow-up data available
-                    </p>
-                  )}
+                  {/* Follow-up Modal */}
                 </div>
               )}{" "}
               {/* Left Column */}
             </div>
           </div>
+
+          {showFollowup && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[9999]">
+              <div className="bg-white p-6 rounded-xl shadow-lg relative max-w-lg w-full">
+                <button
+                  onClick={() => setShowFollowup(false)}
+                  className="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold"
+                >
+                  ×
+                </button>
+
+                <FollowupLead
+                  leadId={selectedlead?._id}
+                  onClose={() => setShowFollowup(false)}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Confirmation Modals */}
           <AnimatePresence>
@@ -965,46 +1033,3 @@ const canEdit =
 }
 
 export default Customerdetailmodal;
-
-// {activeTab === "followups" && (
-//     <div className="bg-white rounded-xl shadow-md p-4">
-//     {selectedlead ?
-//      ( <table className="min-w-full border
-//       border-gray-200">
-//       <thead className="bg-gray-100">
-//         <tr>
-// <th className="px-4 py-2 text-left">Date</th>
-// <th className="px-4 py-2 text-left">Agent</th>
-// <th className="px-4 py-2 text-left">Description</th>
-// <th className="px-4 py-2 text-left">Enquiry Program-Type</th>
-// <th className="px-4 py-2 text-left">Status</th>
-// </tr> </thead> <tbody> <tr className="border-t">
-// {/* Date */}
-// <td className="px-4 py-2">
-// {selectedlead.nextFollowUp ?
-// new Date(selectedlead.nextFollowUp)
-// .toLocaleDateString("en-GB") : "-"}
-//    </td>
-// <td className="px-4 py-2">
-// {selectedlead.nextfollowupupdatedBy?.name || "Not updated"}
-// </td>
-// <td className="px-4 py-2">
-// { selectedlead.userDetails?.find(
-// (detail) => detail.leadFormId?.type === "textarea" )
-// ?.value && selectedlead.userDetails?.find(
-// (detail) => detail.leadFormId?.type === "textarea" )?.value !== "undefined" ?
-// selectedlead.userDetails.find(
-// (detail) => detail.leadFormId?.type === "textarea" ).value : "No description" }
-// </td>
-// <td className="px-4 py-2">
-// {(() => { const checkboxField = selectedlead.userDetails?.
-// find( (detail) => detail.leadFormId?.type === "checkbox" );
-// return checkboxField?.value && checkboxField?.value !== "undefined" ?
-// checkboxField.value : "No data"; })()}
-// </td>
-// <td className="px-4 py-2 capitalize">
-// {selectedlead.status || "N/A"} </td>
-//         </tr> </tbody> </table> ) : (
-//      <p className="text-gray-500">No follow-up data available</p> )}
-//         </div>
-// )}

@@ -13,26 +13,30 @@ export const editstaff = async ({ staffId, staffdata }) => {
 
 export const liststaffs = async () => {
     const { data } = await axios.get(`${API_URL}/staffs/get-staffs`, getAuthorized())
+    console.log(data,"listStaff")
     return data
 }
 
 export const listagents = async () => {
     const { data } = await axios.get(`${API_URL}/staffs/get-agents`, getAuthorized())
+    console.log(data,"listagentd")
     return data
 }
 
-export const getallagents = async () => {
-    const { data } = await axios.get(`${API_URL}/staffs/get-all-agents`, getAuthorized())
-    return data
-}
+export const deletestaff = async (id, body) => {
+  const config = {
+    ...getAuthorized(),  // headers
+    data: body           // <-- VERY IMPORTANT
+  };
 
-export const deletestaff = async ({ staffId, newAgentId }) => {
-    const { data } = await axios.delete(`${API_URL}/staffs/delete-staffs/${staffId}`, {
-        ...getAuthorized(),
-        data: { newAgentId },
-    })
-    return data
-}
+  const { data } = await axios.delete(
+    `${API_URL}/staffs/delete-staffs/${id}`,
+    config
+  );
+
+  return data;
+};
+
 
 export const changepassword = async ({ id, formdata }) => {
     const { data } = await axios.put(`${API_URL}/staffs/change-password/${id}`, formdata, getAuthorized())

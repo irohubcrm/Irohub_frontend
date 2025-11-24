@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addPayment,
@@ -8,10 +8,11 @@ import {
 } from "../../services/paymentstatusRouter";
 import { uploadToCloudinary } from "../../utils/cloudinaryHelper";
 import { useSelector } from "react-redux";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import EditPaymentModal from "./EditPaymentModal";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import ScreenshotViewer from "../ScreenshotViewer";
 
 // Currency formatter for INR (memoized outside the component)
 const formatCurrency = (amount) =>
@@ -27,6 +28,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
   const [paymentMode, setPaymentMode] = useState("");
   const [editPayment, setEditPayment] = useState(null);
   const [receiptFile, setReceiptFile] = useState(null);
+  const [localPreview, setLocalPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -86,11 +88,11 @@ const PaymentAddModel = ({ customerId, productId }) => {
   const { mutate: deletePaymentFn } = useMutation({
     mutationFn: deletePayment,
     onSuccess: () => {
-      toast.success("🗑️ Payment deleted!");
+      toast.success("🗑 Payment deleted!");
       invalidateQueries();
     },
     onError: () => {
-      toast.error("⚠️ Failed to delete payment.");
+      toast.error("⚠ Failed to delete payment.");
     },
   });
 
@@ -106,29 +108,44 @@ const PaymentAddModel = ({ customerId, productId }) => {
     const file = e.target.files[0];
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please upload an image file');
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file");
         return;
       }
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size should be less than 5MB');
+        toast.error("File size should be less than 5MB");
         return;
       }
       setReceiptFile(file);
+      setLocalPreview((prev) => {
+        if (prev)
+          try {
+            URL.revokeObjectURL(prev);
+          } catch (e) {}
+        return URL.createObjectURL(file);
+      });
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (localPreview)
+        try {
+          URL.revokeObjectURL(localPreview);
+        } catch (e) {}
+    };
+  }, [localPreview]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount || !date || !paymentMode || !receiptFile) {
-      return toast.error("⚠️ Please fill all fields and upload a receipt.");
-    }
+    if (!amount || !date || !paymentMode)
+      return toast.error("⚠ Please fill all fields.");
 
     try {
       setIsUploading(true);
       let receiptUrl = null;
-      
+
       // Upload receipt if provided
       if (receiptFile) {
         receiptUrl = await uploadToCloudinary(receiptFile);
@@ -153,7 +170,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm("🗑️ Confirm delete?")) deletePaymentFn(id);
+    if (window.confirm("🗑 Confirm delete?")) deletePaymentFn(id);
   };
 
   // Extract safe payment values
@@ -206,7 +223,9 @@ const PaymentAddModel = ({ customerId, productId }) => {
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
               {paymentMode === "cash" ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">📝 For cash payments, please upload:</p>
+                  <p className="text-sm text-gray-600">
+                    📝 For cash payments, please upload:
+                  </p>
                   <ul className="list-disc list-inside text-sm text-gray-600 ml-2">
                     <li>Written receipt or acknowledgment</li>
                     <li>Cash counting photo (optional)</li>
@@ -215,7 +234,8 @@ const PaymentAddModel = ({ customerId, productId }) => {
                 </div>
               ) : (
                 <p className="text-sm text-gray-600">
-                  📱 Please upload a screenshot of the {paymentMode.replace('_', ' ')} payment
+                  📱 Please upload a screenshot of the{" "}
+                  {paymentMode.replace("_", " ")} payment
                 </p>
               )}
               <input
@@ -225,9 +245,22 @@ const PaymentAddModel = ({ customerId, productId }) => {
                 className="mt-3 p-2 w-full border rounded-lg text-sm"
               />
               {receiptFile && (
-                <p className="text-sm text-green-600 mt-2">
-                  ✓ {receiptFile.name} selected
-                </p>
+                <div className="mt-2 flex items-center gap-3">
+                  <p className="text-sm text-green-600">
+                    ✓ {receiptFile.name} selected
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLocalPreview(
+                        (prev) => prev ?? URL.createObjectURL(receiptFile)
+                      )
+                    }
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    👁 Preview
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -253,7 +286,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
               Uploading...
             </>
           ) : (
-            'Add Payment'
+            "Add Payment"
           )}
         </button>
       </form>
@@ -268,10 +301,18 @@ const PaymentAddModel = ({ customerId, productId }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Product</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Total Amount</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Total Paid</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Balance</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                  Product
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                  Total Amount
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                  Total Paid
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                  Balance
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -330,43 +371,61 @@ const PaymentAddModel = ({ customerId, productId }) => {
                       {formatCurrency(item.paidAmount)}
                     </td>
                     <td className="p-3 capitalize">{item.paymentMode}</td>
-                    <td className="p-3 text-center">
+                    <td className="p-3">
                       {item.receiptUrl ? (
-                        <button
-                          onClick={() => setPreviewImage(item)}
-                          className={`relative group ${
-                            item.paymentMode === 'cash' 
-                              ? 'ring-2 ring-yellow-400'
-                              : item.paymentMode === 'upi'
-                              ? 'ring-2 ring-green-400'
-                              : item.paymentMode === 'card'
-                              ? 'ring-2 ring-blue-400'
-                              : 'ring-2 ring-purple-400'
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setPreviewImage(item)}
+                            className={`
+          relative group rounded-lg overflow-hidden 
+          shadow-md border bg-white transition 
+          hover:shadow-lg hover:scale-105
+          ${
+            item.paymentMode === "cash"
+              ? "border-yellow-400"
+              : item.paymentMode === "upi"
+              ? "border-green-400"
+              : item.paymentMode === "card"
+              ? "border-blue-400"
+              : "border-purple-400"
+          }
+        `}
+                          >
+                            <img
+                              src={item.receiptUrl}
+                              alt="Payment receipt"
+                              className="w-10 h-10 object-cover rounded-md"
+                            />
+
+                            {/* Hover Overlay */}
+                            <div
+                              className="
+          absolute inset-0 bg-black/40 opacity-0 
+          group-hover:opacity-100 transition flex 
+          items-center justify-center
+        "
+                            >
+                              <span className="text-white text-sm font-medium">
+                                👁 View
+                              </span>
+                            </div>
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          className={`text-sm px-3 py-2 rounded-full ${
+                            item.paymentMode === "cash"
+                              ? "bg-yellow-50 text-yellow-600"
+                              : "bg-green-50 text-green-600"
                           }`}
                         >
-                          <img
-                            src={item.receiptUrl}
-                            alt={`${item.paymentMode} receipt`}
-                            className="w-16 h-16 object-cover rounded-lg hover:opacity-75 transition-opacity cursor-pointer"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                            <span className="text-white opacity-0 group-hover:opacity-100">👁️ View</span>
-                          </div>
-                        </button>
-                      ) : (
-                        <span className={`text-sm px-3 py-2 rounded-full ${
-                          item.paymentMode === 'cash'
-                            ? 'bg-yellow-50 text-yellow-600'
-                            : item.paymentMode === 'upi'
-                            ? 'bg-green-50 text-green-600'
-                            : item.paymentMode === 'card'
-                            ? 'bg-blue-50 text-blue-600'
-                            : 'bg-purple-50 text-purple-600'
-                        }`}>
-                          {item.paymentMode === 'cash' ? '📄 No receipt' : '🖼️ No screenshot'}
+                          {item.paymentMode === "cash"
+                            ? "📄 No receipt"
+                            : "🖼 No screenshot"}
                         </span>
                       )}
                     </td>
+
                     <td className="p-3 flex gap-3">
                       <button
                         className="text-blue-600 hover:text-blue-800"
@@ -407,85 +466,39 @@ const PaymentAddModel = ({ customerId, productId }) => {
           </motion.div>
         )}
 
-        {/* Image Preview Modal */}
+        {/* Screenshot Viewer for transaction or local file previews */}
         {previewImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-            onClick={() => setPreviewImage(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              className="relative max-w-4xl w-full bg-white rounded-xl p-4 overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setPreviewImage(null)}
-                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
-              >
-                ✕
-              </button>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Payment Receipt
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {new Date(previewImage.transactionDate).toLocaleDateString()} • 
-                      <span className={`ml-2 capitalize ${
-                        previewImage.paymentMode === 'cash'
-                          ? 'text-yellow-600'
-                          : previewImage.paymentMode === 'upi'
-                          ? 'text-green-600'
-                          : previewImage.paymentMode === 'card'
-                          ? 'text-blue-600'
-                          : 'text-purple-600'
-                      }`}>
-                        {previewImage.paymentMode.replace('_', ' ')}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-green-600">
-                      {formatCurrency(previewImage.paidAmount)}
-                    </p>
-                  </div>
-                </div>
+          <ScreenshotViewer
+            images={[
+              {
+                src: previewImage.receiptUrl,
+                title: "Payment Receipt",
+                transactionDate: previewImage.transactionDate,
+                paidAmount: formatCurrency(previewImage.paidAmount),
+                paymentMode: previewImage.paymentMode,
+              },
+            ]}
+            initialIndex={0}
+            onClose={() => setPreviewImage(null)}
+          />
+        )}
 
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
-                  <img
-                    src={previewImage.receiptUrl}
-                    alt="Payment Receipt"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3">
-                  <a
-                    href={previewImage.receiptUrl}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700"
-                  >
-                    💾 Download
-                  </a>
-                  <button
-                    onClick={() => setPreviewImage(null)}
-                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-700"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+        {localPreview && (
+          <ScreenshotViewer
+            images={[
+              {
+                src: localPreview,
+                title: receiptFile?.name ?? "Receipt Preview",
+              },
+            ]}
+            initialIndex={0}
+            onClose={() => {
+              try {
+                URL.revokeObjectURL(localPreview);
+              } catch (e) {}
+              setLocalPreview(null);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

@@ -7,7 +7,7 @@ import { addProductSetting } from '../../services/settingservices/productSetting
 import { toggleproductsModal } from '../../redux/settingsmodalSlice';
 import { AnimatePresence, motion } from 'framer-motion'; 
 import Spinner from '../Spinner'; 
-
+import { duration } from 'moment/moment';
 
 const ProductAddModal = () => { 
     const dispatch = useDispatch();

@@ -21,11 +21,11 @@ import {
   faMapMarkerAlt,
   faDollarSign,
   faTimes,
+  faIndianRupeeSign,
 } from "@fortawesome/free-solid-svg-icons";
 import PersonalDetails from "./PersonalDetails";
 import { countryCodes } from "../utils/countryCodes";
 import { Variable } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
 
 const InputField = ({
   icon,
@@ -60,14 +60,14 @@ const InputField = ({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           ${
             error
-              ? "border-red-500 bg-red-50 text-red-900"
+              ? "border-red-300 bg-red-50 text-black"
               : "border-gray-200 hover:border-gray-300 bg-white"
           }
         `}
       />
     </div>
     {error && (
-      <p className="text-red-500 text-xs flex items-center gap-1">
+      <p className="text-white-500 text-xs flex items-center gap-1">
         <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
         {error}
       </p>
@@ -105,7 +105,7 @@ const SelectField = ({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           ${
             error
-              ? "border-red-500 bg-red-50 text-red-900"
+              ? "border-red-300 bg-red-50"
               : "border-gray-200 hover:border-gray-300 bg-white"
           }
           appearance-none bg-white
@@ -167,7 +167,7 @@ function CustomereditModal() {
       const previousLeads = queryClient.getQueryData(["Listleads"]);
 
       queryClient.setQueryData(["Listleads"], (old) => {
-        if (!old) return old;
+        if (!old  || !old.data) return old;
 
         return {
           ...old,
@@ -184,7 +184,6 @@ function CustomereditModal() {
       if (context?.previousLeads) {
         queryClient.setQueryData(["Listleads"], context.previousLeads);
       }
-      toast.error(error?.response?.data?.message || "An error occurred");
     },
 
     onSettled: () => {
@@ -197,7 +196,7 @@ function CustomereditModal() {
         setupdatesuccessmodal(false);
         dispatch(toggleCustomereditmodal());
         dispatch(toggleCustomerdetailmodal());
-      }, 2000);
+      }, 1000);
     },
   });
 
@@ -212,12 +211,15 @@ function CustomereditModal() {
       .email("Invalid email format"),
     mobile: Yup.string()
       .required("Mobile is required")
-      .matches(/^[0-9\s]+$/, "Mobile number can only contain digits and spaces")
+      .matches(
+        /^\+?[0-9\s]+$/,
+        "Mobile number can contain digits, spaces, and optional '+'"
+      )
       .min(7, "Mobile number must be at least 7 digits")
       .max(15, "Mobile number must be at most 15 digits"),
     countrycode: Yup.string().required("Country code is required"),
-    source: Yup.string().required("Lead source is required"),
-    location: Yup.string().required("Location is required"),
+    source: Yup.string(),
+    location: Yup.string(),
     interestedproduct: Yup.string(),
     leadvalue: Yup.number(),
   });
@@ -250,10 +252,14 @@ function CustomereditModal() {
 
       const payload = { ...values, mobile: fullMobile };
 
-      await updatingcustomers.mutateAsync({
-        customerId: selectedLead._id,
-        customerData: payload,
-      });
+      try {
+        await updatingcustomers.mutateAsync({
+          customerId: selectedLead._id,
+          customerData: payload,
+        });
+      } catch (error) {
+        console.error("Error updating customer:", error);
+      }
     },
   });
 
@@ -263,7 +269,6 @@ function CustomereditModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <Toaster />
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -272,7 +277,7 @@ function CustomereditModal() {
         className="bg-white/95 backdrop-blur-lg p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-white/20"
       >
         {/* Spinner Overlay */}
-        <AnimatePresence>
+        {/* <AnimatePresence>
           {(fetchleadsource.isLoading || updatingcustomers.isPending) && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -283,7 +288,7 @@ function CustomereditModal() {
               <Spinner />
             </motion.div>
           )}
-        </AnimatePresence>
+        </AnimatePresence> */}
 
         {/* Header */}
         <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-100">
@@ -376,7 +381,7 @@ function CustomereditModal() {
                 error={
                   customereditForm.touched.mobile &&
                   customereditForm.errors.mobile
-                } 
+                }
                 {...customereditForm.getFieldProps("mobile")}
               />
 
@@ -420,7 +425,7 @@ function CustomereditModal() {
               />
 
               <InputField
-                icon={faDollarSign}
+                icon={faIndianRupeeSign}
                 label="Lead Value"
                 name="leadvalue"
                 type="number"

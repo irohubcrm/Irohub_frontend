@@ -1,515 +1,557 @@
-import React, {
-  useState,
-  useMemo,
-  useCallback,
-  useEffect,
-  Suspense,
-  useTransition,
-} from "react";
-import Sidebar from "./Sidebar";
-import MonthlyLeadsChart from "../components/BarChart";
-import LeadStatusPieChart from "../components/PieChart";
-import { FaBars, FaChartBar } from "react-icons/fa";
-import Icons from "./Icons";
-import Spinner from "../components/Spinner";
-import useDebounce from "../utils/useDebounce";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listleads } from "../services/leadsRouter";
-
-// Lazy heavy tabs
-const StaffReport = React.lazy(() => import("../components/StaffReport"));
-const CustomerReport = React.lazy(() => import("../components/CustomerReport"));
-
-// Lightweight ErrorBoundary for Suspense fallback
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error) {
-    // optionally log
-    // console.error(error);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6 bg-red-50 rounded-lg text-red-700">
-          Something went wrong. Try refreshing the tab.
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// Row component memoized to avoid re-renders
-const LeadRow = React.memo(function LeadRow({ lead }) {
-  const created = lead.createdAt
-    ? new Date(lead.createdAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : "N/A";
-
-  const statusClasses = useMemo(() => {
-    switch (lead.status) {
-      case "converted":
-        return "bg-green-100 text-green-700";
-      case "open":
-        return "bg-yellow-100 text-yellow-700";
-      case "rejected":
-        return "bg-red-100 text-red-700";
-      case "closed":
-        return "bg-blue-100 text-blue-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  }, [lead.status]);
-
-  return (
-    <tr className="hover:bg-gray-50 border-b border-gray-200">
-      <td className="px-2 sm:px-4 py-2 truncate">{lead.name || "N/A"}</td>
-      <td className="px-2 sm:px-4 py-2 truncate">{lead.email || "N/A"}</td>
-      <td className="px-2 sm:px-4 py-2">{lead.mobile || "N/A"}</td>
-      <td className="px-2 sm:px-4 py-2 capitalize">
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-semibold ${statusClasses}`}
-        >
-          {lead.status || "N/A"}
-        </span>
-      </td>
-      <td className="px-2 sm:px-4 py-2">{created}</td>
-      <td className="px-2 sm:px-4 py-2 capitalize truncate">
-        {lead?.source?.title || "N/A"}
-      </td>
-      <td className="px-2 sm:px-4 py-2 capitalize truncate">
-        {lead?.assignedTo?.name || "N/A"}
-      </td>
-    </tr>
-  );
-});
-
-// Virtualized list wrapper (optional: requires react-window)
-function VirtualizedLeads({ leads, RowComponent, height = 400 }) {
-  // Try to import react-window dynamically (so app doesn't crash if not installed)
-  let FixedSizeList;
-  try {
-    // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-    FixedSizeList = require("react-window").FixedSizeList;
-  } catch {
-    FixedSizeList = null;
-  }
-
-  if (!FixedSizeList) {
-    // fallback: plain table
-    return (
-      <div className="overflow-x-auto max-h-[400px]">
-        <table className="min-w-full text-xs sm:text-sm border-collapse">
-          <thead className="bg-blue-600 text-white font-semibold sticky top-0 z-10">
-            <tr>
-              <th className="px-2 sm:px-4 py-2 text-left">Name</th>
-              <th className="px-2 sm:px-4 py-2 text-left">Email</th>
-              <th className="px-2 sm:px-4 py-2 text-left">Phone</th>
-              <th className="px-2 sm:px-4 py-2 text-left">Status</th>
-              <th className="px-2 sm:px-4 py-2 text-left">Created</th>
-              <th className="px-2 sm:px-4 py-2 text-left">Source</th>
-              <th className="px-2 sm:px-4 py-2 text-left">Assigned To</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-800">
-            {leads.map((l) => (
-              <LeadRow key={l._id} lead={l} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-
-  // Virtualized table using react-window
-  const rowHeight = 56;
-  const ColumnHeader = () => (
-    <div className="grid grid-cols-7 gap-0 font-semibold text-sm sticky top-0 bg-blue-600 text-white z-10">
-      <div className="px-2 py-3 text-left truncate">Name</div>
-      <div className="px-2 py-3 text-left truncate">Email</div>
-      <div className="px-2 py-3 text-left">Phone</div>
-      <div className="px-2 py-3 text-left">Status</div>
-      <div className="px-2 py-3 text-left">Created</div>
-      <div className="px-2 py-3 text-left truncate">Source</div>
-      <div className="px-2 py-3 text-left truncate">Assigned To</div>
-    </div>
-  );
-
-  return (
-    <div className="bg-white rounded-2xl shadow overflow-hidden">
-      <ColumnHeader />
-      <div style={{ height }}>
-        <FixedSizeList
-          height={height}
-          itemCount={leads.length}
-          itemSize={rowHeight}
-          width="100%"
-        >
-          {({ index, style }) => {
-            const lead = leads[index];
-            return (
-              <div
-                style={style}
-                key={lead._id}
-                className="border-b border-gray-200"
-              >
-                <div className="grid grid-cols-7 gap-0 text-xs sm:text-sm text-gray-800">
-                  <div className="px-2 sm:px-4 py-3 truncate">
-                    {lead.name || "N/A"}
-                  </div>
-                  <div className="px-2 sm:px-4 py-3 truncate">
-                    {lead.email || "N/A"}
-                  </div>
-                  <div className="px-2 sm:px-4 py-3">
-                    {lead.mobile || "N/A"}
-                  </div>
-                  <div className="px-2 sm:px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        lead.status === "converted"
-                          ? "bg-green-100 text-green-700"
-                          : lead.status === "open"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : lead.status === "rejected"
-                          ? "bg-red-100 text-red-700"
-                          : lead.status === "closed"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {lead.status || "N/A"}
-                    </span>
-                  </div>
-                  <div className="px-2 sm:px-4 py-3">
-                    {lead.createdAt
-                      ? new Date(lead.createdAt).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "N/A"}
-                  </div>
-                  <div className="px-2 sm:px-4 py-3 truncate">
-                    {lead?.source?.title || "N/A"}
-                  </div>
-                  <div className="px-2 sm:px-4 py-3 truncate">
-                    {lead?.assignedTo?.name || "N/A"}
-                  </div>
-                </div>
-              </div>
-            );
-          }}
-        </FixedSizeList>
-      </div>
-    </div>
-  );
-}
+import React, { useEffect, useState } from 'react';
+import Sidebar from './Sidebar';
+import { motion } from 'framer-motion';
+import { FaBars, FaChartBar, FaUserMinus, FaUserPlus } from 'react-icons/fa';
+import LeadStatusPieChart from '../components/PieChart';
+import { useQuery } from '@tanstack/react-query';
+import PolarAreaChart from '../components/PolarAreaChart';
+import CustomerStatusPieChart from '../components/CustomerStatusPieChart';
+import { listleads } from '../services/leadsRouter';
+import { liststaffs } from '../services/staffRouter';
+import { listtask } from '../services/tasksRouter';
+import { listconvertedcustomers } from '../services/customersRouter';
+import Icons from './Icons';
+import Spinner from '../components/Spinner';
+import { useSelector } from 'react-redux';
+import PaymentDonutCHart from '../components/PaymentReportChart/PaymentDonutCHart';
+import MonthlyLeadsChart from '../components/BarChart';
+import DateRangeDropdown from '../components/DateRangeDropdown';
 
 function Subadminreports() {
-  const queryClient = useQueryClient();
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [activeReports, setActiveReports] = useState("lead");
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
-  const [leadPage, setLeadPage] = useState(1);
+  const [activereports, setactivereports] = useState('lead');
+  const [allLeads, setAllLeads] = useState([]); // Filtered leads
+  const [allTimeLeads, setAllTimeLeads] = useState([]); // All-time leads
+  const [isFetchingAll, setIsFetchingAll] = useState(true);
+  const [isFetchingAllTime, setIsFetchingAllTime] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // React 18 transition for non-blocking UI updates
-  const [isPending, startTransition] = useTransition();
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
-  // Month filter
-  const currentDate = useMemo(() => new Date(), []);
-  const monthFilter = useMemo(() => {
-    const y = currentDate.getFullYear();
-    const m = String(currentDate.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
-  }, [currentDate]);
+  const handleDateRangeChange = (start, end) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
 
-  // Query key memoized
-  const queryKey = useMemo(
-    () => ["MonthlyLeads", monthFilter, leadPage, debouncedSearchQuery],
-    [monthFilter, leadPage, debouncedSearchQuery]
-  );
+  const user = useSelector((state)=>state.auth.user)
 
-  const {
-    data: initialLeadsData,
+  // Fetch the first page of leads based on date range
+  const { data:
+    initialLeadsData,
     isLoading,
-    isError,
-    isFetching,
-  } = useQuery({
-    queryKey,
-    queryFn: () =>
-      listleads({
-        page: leadPage,
-        date: monthFilter,
-        searchText: debouncedSearchQuery,
-      }),
-    keepPreviousData: true,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-    onSuccess: (data) => {
-      // prefetch next page if available (fast pagination UX)
-      if (data?.totalPages && leadPage < data.totalPages) {
-        queryClient.prefetchQuery(
-          ["MonthlyLeads", monthFilter, leadPage + 1, debouncedSearchQuery],
-          () =>
-            listleads({
-              page: leadPage + 1,
-              date: monthFilter,
-              searchText: debouncedSearchQuery,
-            })
-        );
-      }
-    },
+     isError } = useQuery({
+    queryKey: ['Filtered leads', startDate, endDate, 1],
+    queryFn: () => listleads({
+      page: 1,
+      startDate: startDate ? startDate.toISOString() : undefined,
+      endDate: endDate ? endDate.toISOString() : undefined
+    }),
   });
 
-  // memoized table headers
-  const leadTableHeaders = useMemo(
-    () => [
-      "Name",
-      "Email",
-      "Phone",
-      "Status",
-      "Created",
-      "Source",
-      "Assigned To",
-    ],
-    []
-  );
+  // Fetch the first page of all-time leads
+  const { data:
+     initialAllTimeLeadsData, isLoading: isLoadingAllTime, isError: isErrorAllTime } = useQuery({
+    queryKey: ['All time leads', 1],
+    queryFn: () => listleads({ page: 1 }), // No month filter
+  });
 
-  // Stable handlers
-  const handleSearchChange = useCallback((e) => {
-    const v = e.target.value;
-    // Use startTransition to avoid blocking UI while query re-runs
-    startTransition(() => {
-      setSearchQuery(v);
-      // reset page when searching
-      setLeadPage(1);
-    });
-  }, []);
+  // Fetch all pages of leads based on date range
+  useEffect(() => {
+    const fetchAllLeads = async () => {
+      if (!initialLeadsData || !initialLeadsData.leads) return;
 
-  const goPrevious = useCallback(() => {
-    startTransition(() => setLeadPage((p) => Math.max(p - 1, 1)));
-  }, []);
+      setIsFetchingAll(true);
+      let allFetchedLeads = [...initialLeadsData.leads];
+      const totalPages = initialLeadsData.totalPages || 1;
 
-  const goNext = useCallback(() => {
-    startTransition(() =>
-      setLeadPage((p) => Math.min(p + 1, initialLeadsData?.totalPages || p + 1))
+      for (let page = 2; page <= totalPages; page++) {
+        try {
+          const response = await listleads({
+            page,
+            startDate: startDate ? startDate.toISOString() : undefined,
+            endDate: endDate ? endDate.toISOString() : undefined
+          });
+          if (response.leads && Array.isArray(response.leads)) {
+            allFetchedLeads = [...allFetchedLeads, ...response.leads];
+          }
+        } catch (error) {
+          console.error(`Error fetching page ${page} for filtered leads:`, error);
+        }
+      }
+
+      setAllLeads(allFetchedLeads);
+      setIsFetchingAll(false);
+    };
+
+    if (!isLoading && !isError && initialLeadsData) {
+      fetchAllLeads();
+    }
+  }, [initialLeadsData, isLoading, isError, startDate, endDate]);
+
+  // Fetch all pages of all-time leads
+  useEffect(() => {
+    const fetchAllTimeLeads = async () => {
+      if (!initialAllTimeLeadsData || !initialAllTimeLeadsData.leads) return;
+
+      setIsFetchingAllTime(true);
+      let allFetchedLeads = [...initialAllTimeLeadsData.leads];
+      const totalPages = initialAllTimeLeadsData.totalPages || 1;
+
+      for (let page = 2; page <= totalPages; page++) {
+        try {
+          const response = await listleads({ page });
+          if (response.leads && Array.isArray(response.leads)) {
+            allFetchedLeads = [...allFetchedLeads, ...response.leads];
+          }
+        } catch (error) {
+          console.error(`Error fetching page ${page} for all-time leads:`, error);
+        }
+      }
+
+      setAllTimeLeads(allFetchedLeads);
+      setIsFetchingAllTime(false);
+    };
+
+    if (!isLoadingAllTime && !isErrorAllTime && initialAllTimeLeadsData) {
+      fetchAllTimeLeads();
+    }
+  }, [initialAllTimeLeadsData, isLoadingAllTime, isErrorAllTime]);
+
+  const { data: Staffsdata, isLoading: loading, isError: errors } = useQuery({
+    queryKey: ['List Staffs'],
+    queryFn: liststaffs,
+  });
+
+  const { data: Taskdata } = useQuery({
+    queryKey: ['Task Data'],
+    queryFn: listtask,
+  });
+
+  const { data: Customerdata } = useQuery({
+    queryKey: ['Customer Data'],
+    queryFn: listconvertedcustomers,
+  });
+
+  const activecustomers = Customerdata?.customers?.filter((customer) => customer?.isActive === true).length || 0;
+  const inactivecustomers = Customerdata?.customers?.filter((customer) => customer?.isActive === false).length || 0;
+
+  // Filter leads based on search query (for current month leads table)
+  const filteredLeads = allLeads.filter((lead) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.name?.toLowerCase().includes(query) ||
+      lead.email?.toLowerCase().includes(query) ||
+      lead.mobile?.toLowerCase().includes(query)
     );
-  }, [initialLeadsData?.totalPages]);
-
-  // Switch tabs non-blocking
-  const switchTab = useCallback((tab) => {
-    startTransition(() => setActiveReports(tab));
-  }, []);
-
-  // Avoid rendering heavy charts during small screens / when no data
-  const memoizedLeads = useMemo(
-    () => initialLeadsData?.leads || [],
-    [initialLeadsData?.leads]
-  );
-
-  // Small skeleton / placeholder for charts
-  const ChartSkeleton = () => (
-    <div className="animate-pulse space-y-2">
-      <div className="h-40 bg-gray-200 rounded-lg" />
-      <div className="h-24 bg-gray-200 rounded-lg" />
-    </div>
-  );
+  });
 
   return (
-    <div className="flex min-h-screen w-full bg-gray-100 overflow-x-hidden">
+        <div className="flex min-h-screen w-full bg-gray-100 overflow-x-hidden">
       {/* Sidebar */}
-      <div
-        className={`w-64 h-full fixed top-0 left-0 z-50 transition-transform duration-200 ${
-          sidebarVisible ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar />
+      <div className="fixed inset-y-0 left-0 z-40">
+        <motion.div
+          animate={{ x: sidebarVisible ? 0 : -260 }}
+          transition={{ duration: 0.3 }}
+          className="w-64 h-full fixed top-0 left-0 z-50"
+        >
+          <Sidebar />
+        </motion.div>
       </div>
 
-      {/* Main */}
-      <div
-        style={{ marginLeft: sidebarVisible ? "16rem" : "0" }}
-        className="flex-1 flex flex-col min-h-screen overflow-hidden transition-all duration-200"
+      {/* Main Content */}
+      <motion.div
+        animate={{ marginLeft: sidebarVisible ? 256 : 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 flex flex-col min-h-screen overflow-hidden"
       >
+
         {/* Header */}
         <div className="relative flex flex-col sm:flex-row justify-between items-start p-4 sm:p-6 bg-gray-100 border-b border-gray-300">
-          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0 flex items-center">
+
+        {/* <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 bg-white shadow sticky top-0 z-30 border-b"> */}
+            <div className="flex items-center mb-4 sm:mb-0">
             <button
-              aria-label="Toggle sidebar"
-              className="mr-4 text-blue-600 hover:text-blue-800 transition-none"
-              onClick={() => setSidebarVisible((s) => !s)}
+              // className="text-blue-600 hover:text-blue-800 transition"
+              onClick={() => setSidebarVisible(!sidebarVisible)}
             >
-              <FaBars className="text-lg sm:text-xl" />
+              <FaBars className="text-lg sm:text-xl md:text-2xl" />
             </button>
-            Reports{" "}
-            {isPending && (
-              <span className="ml-3 text-sm text-gray-500">Updating…</span>
-            )}
-          </h3>
-          <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-50">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+              Reports
+            </h3>
+          </div>
+          
+
+          {/* Right: Icons */}
+          <div className="absolute top-4 sm:top-5 right-4 sm:right-6 z-[80]">
             <Icons />
           </div>
         </div>
 
-        {/* Content */}
+        {/* Chart Section */}
+        
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-3 sm:gap-4 mb-6">
-            {["lead", "staff", "customer"].map((type) => {
-              const active = activeReports === type;
-              return (
-                <button
-                  key={type}
-                  onClick={() => switchTab(type)}
-                  className={`px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm sm:text-base transition ${
-                    active
-                      ? "bg-blue-600 text-white shadow"
-                      : "bg-gray-200 text-gray-700"
-                  }`}
-                >
-                  {type[0].toUpperCase() + type.slice(1)}
-                </button>
-              );
-            })}
-          </div>
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
+  {/* Left Side: Report Type Buttons */}
+  <div className="flex flex-wrap gap-3 sm:gap-4">
+    {['lead', 'staff', 'customer'].map((type) => (
+      <button
+        key={type}
+        onClick={() => setactivereports(type)}
+        className={`px-4 sm:px-6 py-2 rounded-lg font-semibold cursor-pointer text-sm sm:text-base transition-all duration-200 ${
+          activereports === type
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+        }`}
+      >
+        {type.charAt(0).toUpperCase() + type.slice(1)}
+      </button>
+    ))}
+  </div>
 
-          {/* Lead Report */}
-          {activeReports === "lead" && (
+  {/* Right Side: Date Range Filter */}
+  <div className="z-[70] sm:mr-4 ml-auto">
+    <DateRangeDropdown onDateRangeChange={handleDateRangeChange} />
+  </div>
+</div>
+
+
+          {activereports === 'lead' && (
             <div className="flex flex-col gap-6 sm:gap-8 w-full">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow min-h-[200px]">
+              {/* Charts */}
+              <motion.div
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
                   <div className="flex items-center gap-2 mb-4 border-b pb-2">
                     <FaChartBar className="text-blue-500 text-lg sm:text-xl" />
-                    <h4 className="text-lg sm:text-xl font-semibold text-gray-800">
-                      Lead Sources
-                    </h4>
+                    <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Lead Sources</h4>
                   </div>
-                  {isLoading ? (
-                    <ChartSkeleton />
-                  ) : (
-                    <MonthlyLeadsChart
-                      leads={memoizedLeads}
-                      isAnimationActive={false}
-                    />
-                  )}
+                  <MonthlyLeadsChart type="source" leads={allLeads} startDate={startDate} endDate={endDate} />
                 </div>
 
-                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow min-h-[200px]">
-                  {isLoading ? (
-                    <ChartSkeleton />
-                  ) : (
-                    <LeadStatusPieChart
-                      leads={memoizedLeads}
-                      isAnimationActive={false}
-                    />
-                  )}
+                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+                  <LeadStatusPieChart leads={allLeads} startDate={startDate} endDate={endDate} />
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Leads Table */}
-              <div className="bg-white p-4 sm:p-6 rounded-2xl shadow">
-                <div className="flex justify-between items-center mb-4 border-b pb-2 flex-wrap gap-2">
+              {/* Table */}
+              <motion.div
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg transition"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
                   <h4 className="text-lg sm:text-xl font-semibold text-gray-800">
-                    Leads for{" "}
-                    {currentDate.toLocaleString("default", {
-                      month: "long",
-                      year: "numeric",
-                    })}
+                    Leads {startDate && endDate ? `from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}` : 'for selected date range'}
                   </h4>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Search by name, email, or mobile..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm sm:text-base"
-                      aria-label="Search leads"
-                    />
-                    {isFetching && (
-                      <div className="ml-2">
-                        <Spinner size="sm" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Loading / Error / Data */}
-                {isLoading ? (
-                  <div className="py-12 flex justify-center">
-                    <Spinner />
-                  </div>
-                ) : isError ? (
-                  <p className="text-red-500 text-sm sm:text-base">
-                    Error loading leads data.
-                  </p>
-                ) : memoizedLeads.length > 0 ? (
-                  // Virtualized list with fallback
-                  <VirtualizedLeads
-                    leads={memoizedLeads}
-                    RowComponent={LeadRow}
-                    height={400}
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, or mobile..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                   />
-                ) : (
-                  <p className="text-gray-500 text-sm sm:text-base">
-                    No leads found for this month.
-                  </p>
-                )}
-
-                {/* Pagination */}
-                <div className="flex justify-center items-center mt-4">
-                  <button
-                    onClick={goPrevious}
-                    disabled={leadPage === 1}
-                    className="px-4 py-2 mx-1 bg-gray-300 rounded-md disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-4 py-2 mx-1">
-                    {leadPage} / {initialLeadsData?.totalPages || 1}
-                  </span>
-                  <button
-                    onClick={goNext}
-                    disabled={
-                      leadPage === initialLeadsData?.totalPages ||
-                      !initialLeadsData?.totalPages
-                    }
-                    className="px-4 py-2 mx-1 bg-gray-300 rounded-md disabled:opacity-50"
-                  >
-                    Next
-                  </button>
                 </div>
-              </div>
+
+                {(isLoading || isFetchingAll) ? (
+                  <Spinner />
+                ) : isError ? (
+                  <p className="text-red-500 text-sm sm:text-base">Error loading leads data.</p>
+                ) : filteredLeads.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <div className="max-h-[400px] overflow-y-auto">
+                      <table className="min-w-full table-auto text-xs sm:text-sm">
+                        <thead className="bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white font-semibold sticky top-0 z-10">
+                          <tr>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Name</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Email</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Phone</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Status</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Created</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Source</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Assigned To</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-800">
+                          {filteredLeads.map((lead, index) => (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-50 transition border-b border-gray-200"
+                            >
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{lead.name || 'N/A'}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{lead.email || 'N/A'}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3">{lead.mobile || 'N/A'}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                    lead.status === 'converted'
+                                      ? 'bg-green-100 text-green-700'
+                                      : lead.status === 'open'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : lead.status === 'rejected'
+                                      ? 'bg-red-100 text-red-700'
+                                      : lead.status === 'closed'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+                                  {lead.status || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3">
+                                {lead.createdAt
+                                  ? new Date(lead.createdAt).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize truncate">
+                                {lead?.source?.title || 'N/A'}
+                              </td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize truncate">
+                                {lead?.assignedTo?.name || 'N/A'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm sm:text-base">No leads found for the selected date range.</p>
+                )}
+              </motion.div>
             </div>
           )}
 
-          {/* Staff & Customer — lazy loaded */}
-          <ErrorBoundary>
-            <Suspense
-              fallback={
-                <div className="py-12 flex justify-center">
-                  <Spinner />
-                </div>
-              }
+          {activereports === 'staff' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col gap-6 sm:gap-8"
             >
-              {activeReports === "staff" && <StaffReport />}
-              {activeReports === "customer" && <CustomerReport />}
-            </Suspense>
-          </ErrorBoundary>
+              {/* Staff Bar Chart */}
+              <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+                <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                  <FaChartBar className="text-purple-500 text-lg sm:text-xl" />
+                  <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Staff-wise Lead Performance</h4>
+                </div>
+                <MonthlyLeadsChart    startDate={startDate} endDate={endDate}/>
+              </div>
+
+              {/* Staff Table */}
+              <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg transition">
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                  Staff Performance (All Time)
+                </h4>
+
+                {(loading || isFetchingAllTime) ? (
+                  <Spinner />
+                ) : errors || isErrorAllTime ? (
+                  <p className="text-red-500 text-sm sm:text-base">Error loading staff or leads data.</p>
+                ) : Staffsdata && Staffsdata.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <div className="max-h-[400px] overflow-y-auto">
+                      <table className="min-w-full table-auto text-xs sm:text-sm">
+                        <thead className="bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white font-semibold sticky top-0 z-10">
+                          <tr>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Name</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Role</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Closed</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Rejected</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Open</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Tasks Completed</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-800">
+                          {Staffsdata.map((staff, index) => {
+                            const closedCount = allTimeLeads.filter(
+                              (lead) =>
+                                (lead.status === 'closed' || lead.status === 'converted') &&
+                                lead.assignedTo?._id === staff._id
+                            ).length || 0;
+
+                            const rejectedCount = allTimeLeads.filter(
+                              (lead) => lead.status === 'rejected' && lead.updatedBy?._id === staff._id
+                            ).length || 0;
+
+                            const openCount = allTimeLeads.filter(
+                              (lead) => lead.status === 'open' && lead.updatedBy?._id === staff._id
+                            ).length || 0;
+
+                            const completedTask = Taskdata?.task?.filter(
+                              (task) => task.status === 'completed' && task.updatedBy?._id === staff._id
+                            ).length || 0;
+
+                            return (
+                              <tr
+                                key={staff._id || index}
+                                className="hover:bg-gray-50 transition border-b border-gray-200"
+                              >
+                                <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{staff.name || 'N/A'}</td>
+                                <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize">{staff.role || 'N/A'}</td>
+                                <td className="px-2 sm:px-4 py-2 sm:py-3">{closedCount}</td>
+                                <td className="px-2 sm:px-4 py-2 sm:py-3">{rejectedCount}</td>
+                                <td className="px-2 sm:px-4 py-2 sm:py-3">{openCount}</td>
+                                <td className="px-2 sm:px-4 py-2 sm:py-3">{completedTask}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm sm:text-base">No staff members found.</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activereports === 'customer' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col gap-6 sm:gap-8 w-full"
+            >
+              {/* Charts Section */}
+              <motion.div
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+                  <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                    <FaChartBar className="text-indigo-500 text-lg sm:text-xl" />
+                    <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Customer Category Overview</h4>
+                  </div>
+                  {/* <PolarAreaChart /> */}
+                  <PaymentDonutCHart  startDate={startDate} endDate={endDate}/>
+                </div>
+
+                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
+                  <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                    {/* <FaChartBar className="text-pink-500 text-lg sm:text-xl" /> */}
+                    {/* <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Customer Status Distribution</h4> */}
+                    <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-1">
+          📊 Customer Status Distribution
+        </h2>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
+                    <div className="bg-black text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
+                      <FaUserPlus className="text-green-400 text-xl sm:text-2xl" />
+                      <div>Active: {activecustomers}</div>
+                    </div>
+                    <div className="bg-black text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
+                      <FaUserMinus className="text-red-400 text-xl sm:text-2xl" />
+                      <div>Inactive: {inactivecustomers}</div>
+                    </div>
+                  </div>
+                  <div className="max-w-full mx-auto">
+                    <CustomerStatusPieChart  startDate={startDate} endDate={endDate} />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Customer List Table Section */}
+              <motion.div
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Customer List</h4>
+
+                {isLoading ? (
+                  <Spinner />
+                ) : isError ? (
+                  <p className="text-red-500 text-sm sm:text-base">Error loading customer data.</p>
+                ) : Customerdata && Customerdata.customers.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <div className="max-h-[400px] overflow-y-auto">
+                      <table className="w-full table-auto text-xs sm:text-sm">
+                        <thead className="bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white font-semibold sticky top-0 z-10">
+                          <tr>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Name</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Email</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Phone</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Customer Add Date</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Payment Status</th>
+                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Customer Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-800">
+                          {Customerdata.customers.map((customer, index) => (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-50 transition border-b border-gray-200"
+                            >
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{customer.name || 'N/A'}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{customer.email || 'N/A'}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3">{customer.mobile || 'N/A'}</td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3">
+                                {customer.createdAt
+                                  ? new Date(customer.createdAt).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                    customer.payment === 'paid'
+                                      ? 'bg-green-100 text-green-700'
+                                      : customer.payment === 'partially paid'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+                                  
+                                  {customer.payment || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                    customer.status === 'success'
+                                      ? 'bg-green-100 text-green-700'
+                                      : customer.status === 'failed'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+            
+                                  {customer.status?.title || 'N/A'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm sm:text-base">No customers found.</p>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
-export default React.memo(Subadminreports);
+export default Subadminreports;

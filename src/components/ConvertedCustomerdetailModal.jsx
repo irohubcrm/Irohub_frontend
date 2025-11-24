@@ -17,7 +17,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEdit,
-  faTrash, 
+  faTrash,
   faUser,
   faPhone,
   faCalendar,
@@ -32,9 +32,8 @@ import {
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Spinner from "./Spinner";
-
-import PaymentAddModel from "./payments/PaymentAddModel";
 import Convertedleadeditmodal from "./Convertedleadeditmodal";
+import PaymentAddModel from "./payments/PaymentAddModel";
 
 function ConvertedCustomerdetailModal() {
   const dispatch = useDispatch();
@@ -423,7 +422,6 @@ function ConvertedCustomerdetailModal() {
               </div>
               {/* Form Container */}
               <div className="bg-white p-4 sm:p-6 rounded-b-2xl shadow-lg relative">
-                    
                   <PaymentAddModel
                     customerId={selectedcustomer?._id}
                     productId={selectedcustomer?.product}

@@ -24,6 +24,7 @@ import Spinner from "../components/Spinner";
 
 function Admintasks() {
   const [selectedRole, setselectedRole] = useState("Sub-Admin");
+  const [sidebarVisible, setsidebarVisible] = useState(true);
   const isTaskmodal = useSelector((state) => state.modal.addtasksmodal);
   const isViewtaskmodal = useSelector((state) => state.modal.viewtasksModal);
   const isViewedittaskmodal = useSelector(
@@ -47,20 +48,52 @@ function Admintasks() {
         <Sidebar />
       </div>
 
+      {/* Sidebar Drawer for Mobile */}
+      <AnimatePresence>
+        {sidebarVisible && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setsidebarVisible(false)}
+            />
+
+            <motion.div
+              initial={{ x: -260 }}
+              animate={{ x: 0 }}
+              exit={{ x: -260 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 md:hidden"
+            >
+              <Sidebar />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <motion.div
+        animate={{ x: 0 }}
+        transition={{ duration: 0.3 }}
         className="flex-1 md:ml-64 p-4 sm:p-6 md:p-8"
       >
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
           <h3 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center">
+            <button
+              className="mr-3 text-blue-600 hover:text-blue-800 transition md:hidden"
+              onClick={() => setsidebarVisible(true)}
+            >
+              <FaBars className="text-2xl" />
+            </button>
             Tasks
           </h3>
           <div className="flex justify-end">
             <Icons />
           </div>
         </div>
-
 
         {/* Filter + Add Button */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
@@ -102,7 +135,7 @@ function Admintasks() {
                 className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 p-6 group relative flex flex-col items-center text-center"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05 }}
               >
                 <div className="text-blue-600 mb-4">
                   {staff.profileImage ? (
@@ -123,7 +156,7 @@ function Admintasks() {
                     {staff.role}
                   </p>
                 </div>
-                <div className="flex justify-center gap-3">
+                <div className="flex justify-center gap-3 mt-3">
                   <button
                     className="text-blue-500 hover:text-blue-700 transition"
                     title="Edit Tasks"

@@ -9,45 +9,83 @@ export const addleads = async (leadData) => {
   );
   return data;
 };
+// export const listleads = async (options) => {
+//   const {
+//     page = 1,
+//     priority,
+//     status,
+//     filterleads,
+//     assignedTo,
+//     searchText,
+//     date,
+//     startDate,
+//     endDate,
+//     sortBy,
+//     role,
+//     metadataUser
+//   } = options || {};
 
-export const listleads = async (filters = {}) => {
-  const {
-    page = 1,
-    limit = 10,
-    priority,
-    status,
-    filterleads,
-    assignedTo,
-    searchText,
-    date,
-    startDate,
-    endDate,
-    sortBy,
-  } = filters;
+//   const params = new URLSearchParams({ page });
 
-  const params = new URLSearchParams();
+//   // ❌ Removed limit and noLimit logic completely
 
-  const appendIfValid = (key, value, ignoreList = []) => {
-    if (value && !ignoreList.includes(value)) params.append(key, value);
-  };
+//   if (priority && priority !== "Priority") params.append("priority", priority);
+//   if (status && status !== "Status") params.append("status", status);
+//   if (filterleads && filterleads !== "All") params.append("filterleads", filterleads);
+//   if (assignedTo && assignedTo !== "AssignedTo") params.append("assignedTo", assignedTo);
+//   if (searchText) params.append("searchText", searchText);
+//   if (date && date !== "Date") params.append("date", date);
+//   if (startDate) params.append("startDate", startDate);
+//   if (endDate) params.append("endDate", endDate);
 
-  appendIfValid("page", page);
-  appendIfValid("limit", limit);
-  appendIfValid("priority", priority, ["Priority"]);
-  appendIfValid("status", status, ["Status"]);
-  appendIfValid("filterleads", filterleads, ["All"]);
-  appendIfValid("assignedTo", assignedTo, ["AssignedTo"]);
-  appendIfValid("date", date, ["Date"]);
-  appendIfValid("sortBy", sortBy, ["Sort By"]);
+//   const user = metadataUser || JSON.parse(sessionStorage.getItem("metadataUser") || "{}");
+//   const endpoint = role === "Admin" ? "list-admin" : "list";
 
-  if (searchText?.trim()) params.append("searchText", searchText.trim());
+//   const { data } = await axios.get(
+//     `${API_URL}/leads/${endpoint}?${params.toString()}`,
+//     getAuthorized()
+//   );
+
+//   console.log("Leads statuses:", data?.length);
+//   console.log("API Response:", data);
+
+//   return data;
+// };
+
+export const listleads = async (options) => {
+    const { page = 1, limit = 10000, priority, status, filterleads, assignedTo,
+       searchText, date, startDate, endDate,
+        sortBy,
+         noLimit = false, role, metadataUser } = options || {};
+  
+    const params = new URLSearchParams({ page });
+  if (noLimit) {
+    params.append("noLimit", "true");
+  } else {
+    params.append("limit", limit); // Add limit if noLimit is false
+  }  if (priority && priority !== "Priority") params.append("priority", priority);
+  if (status && status !== "Status") params.append("status", status); // ← filtering
+  if (filterleads && filterleads !== "All") params.append("filterleads", filterleads);
+  if (assignedTo && assignedTo !== "AssignedTo") params.append("assignedTo", assignedTo);
+  if (searchText) params.append("searchText", searchText);
+  if (date && date !== "Date") params.append("date", date);
   if (startDate) params.append("startDate", startDate);
   if (endDate) params.append("endDate", endDate);
 
-  const { data } = await axios.get(`${API_URL}/leads/list?${params}`, getAuthorized());
-  return data;
-}
+  const user = metadataUser || JSON.parse(sessionStorage.getItem('metadataUser') || '{}');
+  const endpoint = role === 'Admin' ? 'list-admin' : 'list';
 
+  const { data } = await axios.get(
+    `${API_URL}/leads/${endpoint}?${params.toString()}`,
+    getAuthorized()
+  );
+
+  // CORRECT: Log the actual lead statuses, not the filter param
+  console.log("Leads statuses:", data?.length)
+  console.log("API Response:", data);
+
+  return data;
+};
 export const assignleads = async ({ leadId, staffId, isAssigning }) => {
   const { data } = await axios.put(
     `${API_URL}/leads/assign/${leadId}`,
@@ -61,7 +99,7 @@ export const listopencustomers = async ({
   page = 1,
   limit = 10,
   priority,
-  assignedTo,
+  assignedTo ,
   searchText,
   date,
   startDate,
@@ -140,11 +178,28 @@ export const uploadbulkleads = async (leadData) => {
   );
   return data;
 };
+// export const getMonthlySummary = async ({ startDate, endDate }) => {
+//   const params = new URLSearchParams();
+//   if (startDate) params.append("startDate", startDate);
+//   if (endDate) params.append("endDate", endDate);
+
+//   const { data } = await axios.get(
+//     `${API_URL}/leads/monthly-summary?${params.toString()}`,
+//     getAuthorized()
+//   );
+//   console.log(data,"monthlyLEad data")
+//   return data;
+// };
 
 export const deletemultipleleads = async ({ leadIds }) => {
   const { data } = await axios.delete(`${API_URL}/leads/delete-multipleleads`, {
     ...getAuthorized(),
     data: { leadIds }, // Send leadIds in the request body
   });
+  return data;
+};
+
+export const deleteAllLeads = async () => {
+  const { data } = await axios.delete(`${API_URL}/leads/delete-all-leads`, getAuthorized());
   return data;
 };

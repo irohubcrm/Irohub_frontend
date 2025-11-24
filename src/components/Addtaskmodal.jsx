@@ -9,13 +9,14 @@ import { useDispatch, useSelector } from 'react-redux'
 import { liststaffs } from '../services/staffRouter'
 import { addtasks } from '../services/tasksRouter'
 import Spinner from './Spinner'
-import toast, { Toaster } from 'react-hot-toast'
 
 function Addtaskmodal() {
   const dispatch = useDispatch()
   const queryclient = useQueryClient()
 
   const userlogged = useSelector((state) => state.auth.user)
+
+  const [showsuccess, setshowsuccess] = useState(false)
 
   const liststaff = useQuery({
     queryKey: ['List staffs'],
@@ -33,8 +34,8 @@ function Addtaskmodal() {
   const addtaskvalidation = Yup.object({
     name: Yup.string().required("Task name is required"),
     assignedTo: Yup.string().required("You need to assign task to a staff"),
-    deadline: Yup.date().min(new Date(new Date().setHours(0, 0, 0, 0)), "Deadline cannot be in the past").typeError("Invalid date format"),
-    description: Yup.string()
+    deadline: Yup.date().min(new Date(new Date().setHours(0, 0, 0, 0)), "Deadline cannot be in the past"),
+    description: Yup.string().required("Enter the description")
   })
 
   const addtaskForm = useFormik({
@@ -46,22 +47,12 @@ function Addtaskmodal() {
     },
     validationSchema: addtaskvalidation,
     onSubmit: async (values) => {
-      try {
-        await addtaskvalidation.validate(values, { abortEarly: false });
-        await addingtask.mutateAsync(values)
-        toast.success("Task added successfully!");
-        setTimeout(() => {
-          dispatch(toggleaddtasksmodal())
-        }, 1000);
-      } catch (error) {
-        if (error.inner) {
-          error.inner.forEach((err) => {
-            toast.error(err.message);
-          });
-        } else {
-          toast.error(error.response?.data?.message || "An unexpected error occurred.");
-        }
-      }
+      await addingtask.mutateAsync(values)
+      setshowsuccess(true)
+      setTimeout(() => {
+        dispatch(toggleaddtasksmodal())
+        setshowsuccess(false)
+      }, 1000);
     }
   })
 
@@ -69,7 +60,6 @@ function Addtaskmodal() {
 
   return (
     <div className='fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto'>
-      <Toaster />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -117,6 +107,7 @@ function Addtaskmodal() {
                 className='border border-gray-300 p-2 sm:p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base'
                 placeholder='Enter the Taskname'
               />
+              <span className='text-red-500 text-xs block mt-1'>* required</span>
               {addtaskForm.touched.name && addtaskForm.errors.name && (
                 <p className='text-red-500 text-xs sm:text-sm mt-1'>{addtaskForm.errors.name}</p>
               )}
@@ -140,6 +131,7 @@ function Addtaskmodal() {
                   ))
                 )}
               </select>
+              <span className='text-red-500 text-xs block mt-1'>* required</span>
               {addtaskForm.touched.assignedTo && addtaskForm.errors.assignedTo && (
                 <p className='text-red-500 text-xs sm:text-sm mt-1'>{addtaskForm.errors.assignedTo}</p>
               )}
@@ -182,7 +174,27 @@ function Addtaskmodal() {
           </form>
         </div>
       </motion.div>
-
+      <AnimatePresence>
+        {showsuccess && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div className="absolute inset-0 bg-black opacity-30" />
+            <motion.div
+              className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[100px] sm:h-[120px] flex items-center justify-center text-center"
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              ✅ Task added successfully!
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

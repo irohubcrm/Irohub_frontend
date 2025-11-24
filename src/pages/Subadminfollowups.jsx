@@ -26,6 +26,17 @@ function Subadminfollowups() {
   const role = useSelector((state) => state.auth.role);
   const metadata = useSelector((state) => state.auth.metadataUser);
 
+  const statusColors = {
+    new: "bg-blue-100 text-blue-700 font-semibold",
+    open: "bg-yellow-100 text-yellow-700 font-semibold",
+    converted: "bg-green-100 text-green-700 font-semibold",
+    walkin: "bg-purple-100 text-purple-700 font-semibold",
+    paused: "bg-orange-100 text-orange-700 font-semibold",
+    rejected: "bg-red-100 text-red-700 font-semibold",
+    unavailable: "bg-gray-200 text-gray-600 font-semibold",
+    closed: "bg-gray-100 text-gray-800 font-semibold",
+  };
+
   const [sidebarVisible, setsidebarVisible] = useState(true);
   const [statussuccessmodal, setstatussuccessmodal] = useState(false);
   const [showsearch, setshowsearch] = useState(false);
@@ -85,6 +96,7 @@ function Subadminfollowups() {
     queryFn: liststaffs,
   });
 
+  
   const updatingpriority = useMutation({
     mutationKey: ["Updatepriority"],
     mutationFn: updatepriority,
@@ -92,6 +104,7 @@ function Subadminfollowups() {
       queryclient.invalidateQueries(["Opencustomers"]);
     },
   });
+
 
   const updatingleadstatus = useMutation({
     mutationKey: ["Updateleadstatus"],
@@ -101,6 +114,7 @@ function Subadminfollowups() {
     },
   });
   
+
 
   const deleteLeadsMutation = useMutation({
     mutationKey: ["Delete leads"],
@@ -194,7 +208,7 @@ function Subadminfollowups() {
         {deleteLeadsMutation.isPending && <Spinner />}
         <div className="flex flex-col min-h-screen">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 bg-white shadow sticky top-0 z-30 border-b">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 sm:p-3 bg-white shadow sticky top-0 z-30 border-b">
             <div className="flex items-center mb-4 sm:mb-0">
               <button
                 className="mr-2 sm:mr-4 text-blue-600 hover:text-blue-800 transition"
@@ -211,7 +225,7 @@ function Subadminfollowups() {
             </div>
           </div>
 
-          <div className="flex justify-between items-center p-4">
+          <div className="flex justify-between items-center p-3">
             {/* Left side: Filters */}
             <div className="flex flex-wrap gap-3">
 
@@ -328,7 +342,7 @@ function Subadminfollowups() {
           </div>
 
           {/* Table Content */}
-          <div className="flex-grow p-4 sm:p-6 bg-gray-100">
+          <div className="flex-grow p-2 sm:p-2 bg-gray-100">
             <div className="flex justify-end mb-4 gap-2">
               {selectedLeads.length > 0 && role !== "Agent" && (
                 <motion.button
@@ -471,23 +485,39 @@ function Subadminfollowups() {
                             </td>
                             <td className="py-2 sm:py-4 px-2 sm:px-4">
                               <select
-                                className="border p-1 sm:p-2 rounded-md bg-gray-100 hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full"
+                                className={`border p-1 sm:p-2 rounded-md hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full ${
+                                  statusColors[lead.status] || ""
+                                }`}
                                 value={lead.status}
-                                disabled={!!metadata}
+                                disable={!!metadata}
                                 onChange={(e) =>
                                   handleleadchange(lead._id, e.target.value)
                                 }
                               >
-                                <option value="new">New</option>
-                                <option value="open">Open</option>
-                                <option value="converted">Converted</option>
-                                
-                                <option value="closed">Closed</option>
-                                <option value="walkin">Walk In</option>
-                                <option value="paused">Paused</option>
-                                <option value="rejected">Rejected</option>
-                                <option value="unavailable">Unavailable</option>
-
+                                <option value="new" className={statusColors.new}>
+                                  New
+                                </option>
+                                <option value="open" className={statusColors.open}>
+                                  Open
+                                </option>
+                                <option value="converted" className={statusColors.converted}>
+                                  Converted
+                                </option>
+                                <option value="closed" className={statusColors.closed}>
+                                  Closed
+                                </option>
+                                <option value="walkin" className={statusColors.walkin}>
+                                  Walk In
+                                </option>
+                                <option value="paused" className={statusColors.paused}>
+                                  Paused
+                                </option>
+                                <option value="rejected" className={statusColors.rejected}>
+                                  Rejected
+                                </option>
+                                <option value="unavailable" className={statusColors.unavailable}>
+                                  Unavailable
+                                </option>
                               </select>
                             </td>
                           </motion.tr>

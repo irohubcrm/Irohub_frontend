@@ -9,12 +9,13 @@ import { useDispatch, useSelector } from 'react-redux'
 import { liststaffs } from '../services/staffRouter'
 import { edittask } from '../services/tasksRouter'
 import Spinner from './Spinner'
-import toast, { Toaster } from 'react-hot-toast'
 
 function Edittaskmodal() {
   const dispatch = useDispatch()
   const queryclient = useQueryClient()
   const selectedtask = useSelector((state) => state.modal.selectedTask)
+
+  const [showsuccess, setshowsuccess] = useState(false)
 
   const liststaff = useQuery({
     queryKey: ['List staffs'],
@@ -30,9 +31,9 @@ function Edittaskmodal() {
   })
 
   const edittaskvalidation = Yup.object({
-    name: Yup.string().required("Task name is required"),
-    assignedTo: Yup.string().required("You need to assign task to a staff"),
-    deadline: Yup.date().min(new Date(new Date().setHours(0, 0, 0, 0)), "Deadline cannot be in the past").typeError("Invalid date format"),
+    name: Yup.string(),
+    assignedTo: Yup.string(),
+    deadline: Yup.date().min(new Date(new Date().setHours(0, 0, 0, 0)), "Deadline cannot be in the past"),
     description: Yup.string()
   })
 
@@ -45,28 +46,17 @@ function Edittaskmodal() {
     },
     validationSchema: edittaskvalidation,
     onSubmit: async (values) => {
-      try {
-        await edittaskvalidation.validate(values, { abortEarly: false });
-        await updatingtask.mutateAsync({ taskId: selectedtask._id, taskdata: values })
-        toast.success("Task edited successfully!");
-        setTimeout(() => {
-          dispatch(toggleedittaskmodal(null))
-        }, 1000);
-      } catch (error) {
-        if (error.inner) {
-          error.inner.forEach((err) => {
-            toast.error(err.message);
-          });
-        } else {
-          toast.error(error.response?.data?.message || "An unexpected error occurred.");
-        }
-      }
+      await updatingtask.mutateAsync({ taskId: selectedtask._id, taskdata: values })
+      setshowsuccess(true)
+      setTimeout(() => {
+        dispatch(toggleedittaskmodal(null))
+        setshowsuccess(false)
+      }, 1000);
     }
   })
 
   return (
     <div className='fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto'>
-      <Toaster />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -172,7 +162,27 @@ function Edittaskmodal() {
           </form>
         </div>
       </motion.div>
-
+      <AnimatePresence>
+        {showsuccess && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div className="absolute inset-0 bg-black opacity-30" />
+            <motion.div
+              className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[100px] sm:h-[120px] flex items-center justify-center text-center"
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              ✅ Task edited successfully!
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
