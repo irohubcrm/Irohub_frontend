@@ -21,7 +21,6 @@ import {
   faMapMarkerAlt,
   faDollarSign,
   faTimes,
-  faIndianRupeeSign,
 } from "@fortawesome/free-solid-svg-icons";
 import PersonalDetails from "./PersonalDetails";
 import { countryCodes } from "../utils/countryCodes";
@@ -60,7 +59,7 @@ const InputField = ({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           ${
             error
-              ? "border-red-300 bg-red-50 text-black"
+              ? "border-red-300 bg-red-50 text-white"
               : "border-gray-200 hover:border-gray-300 bg-white"
           }
         `}
@@ -167,7 +166,7 @@ function CustomereditModal() {
       const previousLeads = queryClient.getQueryData(["Listleads"]);
 
       queryClient.setQueryData(["Listleads"], (old) => {
-        if (!old  || !old.data) return old;
+        if (!old) return old;
 
         return {
           ...old,
@@ -196,7 +195,7 @@ function CustomereditModal() {
         setupdatesuccessmodal(false);
         dispatch(toggleCustomereditmodal());
         dispatch(toggleCustomerdetailmodal());
-      }, 1000);
+      }, 2000);
     },
   });
 
@@ -277,7 +276,7 @@ function CustomereditModal() {
         className="bg-white/95 backdrop-blur-lg p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-white/20"
       >
         {/* Spinner Overlay */}
-        {/* <AnimatePresence>
+        <AnimatePresence>
           {(fetchleadsource.isLoading || updatingcustomers.isPending) && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -288,7 +287,7 @@ function CustomereditModal() {
               <Spinner />
             </motion.div>
           )}
-        </AnimatePresence> */}
+        </AnimatePresence>
 
         {/* Header */}
         <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-100">
@@ -381,7 +380,9 @@ function CustomereditModal() {
                 error={
                   customereditForm.touched.mobile &&
                   customereditForm.errors.mobile
-                }
+                } 
+                {...error && (
+                  <p className="text-red-500 text-xs flex items-center gap-1">{error}</p>)}
                 {...customereditForm.getFieldProps("mobile")}
               />
 
@@ -425,7 +426,7 @@ function CustomereditModal() {
               />
 
               <InputField
-                icon={faIndianRupeeSign}
+                icon={faDollarSign}
                 label="Lead Value"
                 name="leadvalue"
                 type="number"

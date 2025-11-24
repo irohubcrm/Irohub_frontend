@@ -422,6 +422,7 @@ function ConvertedCustomerdetailModal() {
               </div>
               {/* Form Container */}
               <div className="bg-white p-4 sm:p-6 rounded-b-2xl shadow-lg relative">
+                    
                   <PaymentAddModel
                     customerId={selectedcustomer?._id}
                     productId={selectedcustomer?.product}

@@ -29,7 +29,6 @@ export const listconvertedcustomers = async ({
     date,
     startDate,
     endDate,
-    assignedTo,
 }) => {
     const params = new URLSearchParams({ page, limit });
     if (paymentStatus && paymentStatus !== 'Payment Status') params.append('paymentStatus', paymentStatus);
@@ -38,7 +37,6 @@ export const listconvertedcustomers = async ({
     if (date && date !== 'Date') params.append('date', date);
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    if (assignedTo) params.append('assignedTo', assignedTo);
     const { data } = await axios.get(`${API_URL}/customers/list?${params.toString()}`, getAuthorized());
     return data;
 };

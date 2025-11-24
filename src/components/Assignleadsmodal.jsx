@@ -15,8 +15,8 @@ function Assignleadsmodal() {
   const [selectdatefilter, setselectdatefilter] = useState(null)
   const [daterangefilter, setdaterangefilter] = useState({ start: null, end: null })
   const [searchText, setsearchText] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const leadsPerPage = 10
+  const [currentPage, setCurrentPage] = useState(1);
+  const leadsPerPage = 10;
 
   const { data: fetchleads, isLoading } = useQuery({
     queryKey: [
@@ -39,40 +39,41 @@ function Assignleadsmodal() {
           datefilter === 'custom' && selectdatefilter
             ? selectdatefilter.toISOString()
             : datefilter === 'range' && daterangefilter.start
-            ? daterangefilter.start.toISOString()
-            : undefined,
+              ? daterangefilter.start.toISOString()
+              : undefined,
         endDate:
           datefilter === 'range' && daterangefilter.end
             ? daterangefilter.end.toISOString()
             : undefined,
       }),
     keepPreviousData: true,
-  })
+  });
 
   const assigningleads = useMutation({
     mutationKey: ['AssignLeads'],
     mutationFn: assignleads,
     onSuccess: () => {
       queryclient.invalidateQueries(['Fetch Leads'])
-    },
+    }
   })
 
   const handleassignleads = async (leadId, checked) => {
     await assigningleads.mutateAsync({
       leadId,
       staffId: staffId,
-      isAssigning: checked ? true : false,
-    })
-  }
+      isAssigning: checked ? true:false
 
-  const totalLeads = fetchleads?.totalLeads || 0
-  const totalPages = fetchleads?.totalPages || 1
+    });
+  };
+
+  const totalLeads = fetchleads?.totalLeads || 0;
+  const totalPages = fetchleads?.totalPages || 1;
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page)
+      setCurrentPage(page);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 backdrop-blur-sm p-4 sm:p-0">
@@ -83,20 +84,17 @@ function Assignleadsmodal() {
         transition={{ duration: 0.4 }}
         className="bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md sm:max-w-3xl md:max-w-6xl text-center relative max-h-[90vh] overflow-hidden border border-gray-300"
       >
-        {assigningleads.isPending && <Spinner />}
-
+        {assigningleads.isPending &&
+          <Spinner />
+        }
         <button
           className="absolute top-3 right-3 sm:top-4 sm:right-6 text-xl sm:text-2xl md:text-3xl font-bold text-gray-400 hover:text-red-500 transition"
           onClick={() => dispatch(toggleAssignleadsmodal(null))}
         >
           &times;
         </button>
+        <h3 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-4 sm:mb-6 tracking-tight">Assign Leads</h3>
 
-        <h3 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-4 sm:mb-6 tracking-tight">
-          Assign Leads
-        </h3>
-
-        {/* Filters */}
         <div className="flex flex-wrap gap-2 sm:gap-4 justify-end mb-3 sm:mb-4">
           <div>
             <input
@@ -125,24 +123,14 @@ function Assignleadsmodal() {
 
           {datefilter === 'custom' && (
             <div>
-              <input type="date" onChange={(e) => setselectdatefilter(new Date(e.target.value))} />
+              <input type='date' onChange={(e) => setselectdatefilter(new Date(e.target.value))} />
             </div>
           )}
 
           {datefilter === 'range' && (
             <div className="flex gap-2">
-              <input
-                type="date"
-                onChange={(e) =>
-                  setdaterangefilter({ ...daterangefilter, start: new Date(e.target.value) })
-                }
-              />
-              <input
-                type="date"
-                onChange={(e) =>
-                  setdaterangefilter({ ...daterangefilter, end: new Date(e.target.value) })
-                }
-              />
+              <input type='date' onChange={(e) => setdaterangefilter({ ...daterangefilter, start: new Date(e.target.value) })} />
+              <input type='date' onChange={(e) => setdaterangefilter({ ...daterangefilter, end: new Date(e.target.value) })} />
             </div>
           )}
 
@@ -159,7 +147,6 @@ function Assignleadsmodal() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="overflow-auto max-h-[60vh] sm:max-h-[65vh] rounded-xl border border-gray-200">
           {isLoading ? (
             <Spinner />
@@ -174,55 +161,35 @@ function Assignleadsmodal() {
                       <th className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">Phone</th>
                       <th className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">Interest</th>
                       <th className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">Location</th>
-                      <th className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-center">
-                        Assign
-                      </th>
+                      <th className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-center">Assign</th>
                     </tr>
                   </thead>
-
                   <tbody className="divide-y divide-gray-200">
                     {fetchleads?.leads?.map((lead, index) => (
-                      <tr key={lead._id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
-                        {/* FIXED GLOBAL INDEX HERE */}
-                        <td className="px-3 sm:px-6 py-3 sm:py-5 font-semibold text-gray-800 text-xs sm:text-sm">
-                          {(currentPage - 1) * leadsPerPage + (index + 1)}
-                        </td>
-
-                        <td className="px-3 sm:px-6 py-3 sm:py-5 font-medium text-xs sm:text-sm">
-                          {lead.name}
-                        </td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm">
-                          {lead.mobile}
-                        </td>
-<td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm">{lead.interestedproduct || "N/A"}</td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm">
-                          {lead.location || 'N/A'}
-                        </td>
-
+                      <tr
+                        key={lead._id}
+                        className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                      >
+                        <td className="px-3 sm:px-6 py-3 sm:py-5 font-semibold text-gray-800 text-xs sm:text-sm">{index + 1}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-5 font-medium text-xs sm:text-sm">{lead.name}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm">{lead.mobile}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm">{lead.requiredProductType || "N/A"}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-5 text-xs sm:text-sm">{lead.location || "N/A"}</td>
                         <td className="px-3 sm:px-6 py-3 sm:py-5 text-center">
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input
                               type="checkbox"
                               className="sr-only peer"
                               checked={lead.assignedTo?._id === staffId}
-                              disabled={
-                                lead.assignedTo && lead.assignedTo?._id !== staffId
-                              }
-                              onChange={(e) =>
-                                handleassignleads(lead._id, e.target.checked)
-                              }
+                              disabled={lead.assignedTo && lead.assignedTo?._id !== staffId}
+                              onChange={(e) => handleassignleads(lead._id, e.target.checked)}
                             />
                             <div
                               className={`w-9 sm:w-11 h-5 sm:h-6 rounded-full transition-colors duration-300 
-                                ${
-                                  lead.assignedTo &&
-                                  lead.assignedTo?._id !== staffId
-                                    ? 'bg-gray-300'
-                                    : 'peer-checked:bg-green-500 bg-red-500'
-                                } 
-                                relative after:absolute after:top-[1px] sm:after:top-[2px] after:left-[1px] sm:after:left-[2px] after:bg-white after:border 
-                                after:rounded-full after:h-4 sm:after:h-5 after:w-4 sm:after:w-5 after:transition-all 
-                                peer-checked:after:translate-x-full`}
+                              ${lead.assignedTo && lead.assignedTo?._id !== staffId ? 'bg-gray-300' : 'peer-checked:bg-green-500 bg-red-500'} 
+                              relative after:absolute after:top-[1px] sm:after:top-[2px] after:left-[1px] sm:after:left-[2px] after:bg-white after:border 
+                              after:rounded-full after:h-4 sm:after:h-5 after:w-4 sm:after:w-5 after:transition-all 
+                              peer-checked:after:translate-x-full`}
                             ></div>
                           </label>
                         </td>
@@ -230,85 +197,32 @@ function Assignleadsmodal() {
                     ))}
                   </tbody>
                 </table>
-
-                {/* Pagination */}
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-6 p-3 sm:p-4 bg-white border border-gray-200 shadow-sm rounded-2xl">
+              </div>
+              <div className="flex justify-center gap-2 mt-4">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
+                >
+                  Prev
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
                   <button
-                    disabled={currentPage === 1}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      currentPage === 1
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-105 hover:shadow'
-                    }`}
+                    key={i + 1}
+                    onClick={() => handlePageChange(i + 1)}
+                    className={`px-4 py-2 rounded ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                      }`}
                   >
-                    ← Prev
+                    {i + 1}
                   </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(
-                      (page) =>
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 2 && page <= currentPage + 2)
-                    )
-                    .map((page, index, arr) => {
-                      const showEllipsis = index > 0 && page - arr[index - 1] > 1
-
-                      return (
-                        <React.Fragment key={page}>
-                          {showEllipsis && (
-                            <span className="px-2 text-gray-400 select-none">…</span>
-                          )}
-                          <button
-                            onClick={() => handlePageChange(page)}
-                            className={`w-9 h-9 rounded-lg text-sm font-medium ${
-                              currentPage === page
-                                ? 'bg-blue-600 text-white shadow-md scale-105'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        </React.Fragment>
-                      )
-                    })}
-
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      currentPage === totalPages
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:scale-105 hover:shadow'
-                    }`}
-                  >
-                    Next →
-                  </button>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    <input
-                      type="number"
-                      min="1"
-                      max={totalPages}
-                      placeholder="Page #"
-                      className="w-16 sm:w-20 px-2 py-1.5 border border-gray-300 rounded-md text-sm text-center focus:ring-2 focus:ring-blue-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const page = Number(e.target.value)
-                          if (page >= 1 && page <= totalPages) {
-                            handlePageChange(page)
-                          } else {
-                            alert(`Enter a number between 1 and ${totalPages}`)
-                          }
-                        }
-                      }}
-                    />
-                    <span className="text-xs sm:text-sm text-gray-500">
-                      Page <strong>{currentPage}</strong> of {totalPages}
-                    </span>
-                  </div>
-                </div>
+                ))}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
+                >
+                  Next
+                </button>
               </div>
             </>
           ) : (
