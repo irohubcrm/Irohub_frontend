@@ -22,10 +22,10 @@ const formatCurrency = (amount) =>
     minimumFractionDigits: 2,
   }).format(amount || 0);
 
-const PaymentDetails = () => {
+const PaymentDetails = ({ startDate, endDate }) => {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["allPaymentStatus"],
-    queryFn: getallpaymentstatus,
+    queryKey: ["allPaymentStatus", startDate, endDate],
+    queryFn: () => getallpaymentstatus({ startDate, endDate }),
   });
 
   const payments = data?.data ?? [];
@@ -38,7 +38,7 @@ const PaymentDetails = () => {
     setLoadingTransactions(true);
 
     try {
-      const res = await getTransactions(customer._id);
+      const res = await getTransactions(customer._id, { startDate, endDate });
       setTransactions(res.transactions || []);
     } catch (err) {
       console.error("Error fetching transactions:", err);

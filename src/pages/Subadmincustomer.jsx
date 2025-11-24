@@ -32,7 +32,6 @@ function Subadmincustomer() {
   );
   const role = useSelector((state) => state.auth.role);
   const metadata = useSelector((state) => state.auth.metadataUser);
-
   const [sidebarVisible, setsidebarVisible] = useState(true);
   const [statussuccessmodal, setstatussuccessmodal] = useState(false);
   const [showsearch, setshowsearch] = useState(false);
@@ -60,6 +59,8 @@ function Subadmincustomer() {
       datefilter,
       selectdatefilter,
       daterangefilter,
+      role,
+      metadata?._id,
     ],
     queryFn: () =>
       listconvertedcustomers({
@@ -80,14 +81,18 @@ function Subadmincustomer() {
           datefilter === "range" && daterangefilter.end
             ? daterangefilter.end.toISOString()
             : undefined,
+        assignedTo: undefined,
+        // savio ............................................................
+        //  role === "Agent" && metadata ? metadata._id :
       }),
     keepPreviousData: true,
   });
-
   const fetchcustomerstatus = useQuery({
     queryKey: ["List Settingstatus"],
     queryFn: listcustomersettingstatus,
+    
   });
+  
 
   const updatingcustomerstatus = useMutation({
     mutationKey: ["Update Customerstatus"],
@@ -96,6 +101,9 @@ function Subadmincustomer() {
       queryclient.invalidateQueries(["List converted customers"]);
     },
   });
+
+
+  
 
   const updatingactivecustomers = useMutation({
     mutationKey: ["Update active customers"],
@@ -144,6 +152,8 @@ function Subadmincustomer() {
       setstatussuccessmodal(false);
     }, 2000);
   };
+ 
+  
 
   const handleSelectCustomer = (customerId) => {
     setSelectedCustomers((prev) =>
@@ -184,6 +194,7 @@ function Subadmincustomer() {
     fetchcustomerstatus?.data?.getCustomerstatus?.filter(
       (customerstatus) => customerstatus.active
     );
+    
 
   // Simplified payment status function to use Customer.payment
   const getPaymentStatus = (customer) => {
@@ -203,7 +214,8 @@ function Subadmincustomer() {
 
       {/* Main Content */}
       <motion.div
-        animate={{ x: sidebarVisible ? 256 : 0 }}
+        animate={{ marginLeft: sidebarVisible ? 256 : 0 }}     
+          //  animate={{ x: sidebarVisible ? 256 : 0 }}
         transition={{ duration: 0.3 }}
         className="flex-1 h-screen overflow-y-auto"
       >
@@ -228,7 +240,10 @@ function Subadmincustomer() {
             <div className="flex items-center space-x-2 sm:space-x-4">
               <Icons />
             </div>
-            {role !== "Agent" && !metadata && (
+{/* ther changed saviyo ................................................ */}
+            {role  && !metadata && (
+              //....................................................................
+              
               <button
                 className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 bg-blue-600 hover:bg-blue-700 text-white p-3 sm:p-4 md:p-5 rounded-full shadow-lg transform hover:-translate-y-2 transition-all duration-300 z-40 flex items-center justify-center"
                 onClick={() => dispatch(toggleaddcustomermodal())}
@@ -320,7 +335,11 @@ function Subadmincustomer() {
                     onChange={(e) => setsearchText(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 font-medium bg-white focus:ring-2 focus:ring-blue-500 text-sm sm:text-base w-40 sm:w-56"
                     placeholder="Search..."
-                    initial={{ opacity: 0, scaleX: 0 }}
+                    // initial={{ opacity: 0, width: 0 }}
+                    // animate={{ opacity: 1, width: "auto" }}
+                    // exit={{ opacity: 0, width: 0 }}
+
+                                        initial={{ opacity: 0, scaleX: 0 }}
                     animate={{ opacity: 1, scaleX: 1 }}
                     exit={{ opacity: 0, scaleX: 0 }}
                     transition={{ duration: 0.3 }}
@@ -465,7 +484,18 @@ function Subadmincustomer() {
                                   : "N/A"}
                               </td>
                               <td className="py-2 sm:py-4 px-2 sm:px-4">
-                                <span
+                          {/* <span
+  className={`inline-block px-2 py-1 rounded-md text-white text-xs sm:text-sm ${
+    getPaymentStatus(customer) === "paid"
+      ? "bg-green-600"
+      : getPaymentStatus(customer) === "partially paid"
+      ? "bg-yellow-500"
+      : "bg-red-500"
+  }`}
+>
+  {customer.payment || "Pending"}
+</span> */}
+<span
                                   className={`inline-block px-2 py-1 rounded-md text-white text-xs sm:text-sm ${
                                     getPaymentStatus(customer) === "paid"
                                       ? "bg-green-600"
@@ -477,11 +507,13 @@ function Subadmincustomer() {
                                 >
                                   {customer.payment || "Pending"}
                                 </span>
+
                               </td>
                               <td className="py-2 sm:py-4 px-2 sm:px-4">
                                 <select
                                   className="border p-1 sm:p-2 rounded-md bg-gray-100 hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full"
-                                  value={customer.status?._id || ""}
+                               value={customer.status?._id || ""}
+
                                   disabled={!!metadata}
                                   onChange={(e) =>
                                     handlecustomerstatus(
@@ -503,8 +535,12 @@ function Subadmincustomer() {
                                   )}
                                 </select>
                               </td>
+                              {/* <td className="py-2 sm:py-4 px-2 sm:px-4 capitalize">
+                                {customer.leadId?.status || "N/A"}
+                              </td> */}
                               <td className="py-2 sm:py-4 px-2 sm:px-4">
-                                <label className="relative inline-flex items-center cursor-pointer">
+                                <label 
+                                className="relative inline-flex items-center cursor-pointer">
                                   <input
                                     type="checkbox"
                                     className="sr-only peer"
@@ -528,35 +564,86 @@ function Subadmincustomer() {
                     </table>
                   </div>
                 </div>
-                <div className="flex justify-center gap-2 mt-4">
-                  <button
-                    disabled={currentpage === 1}
-                    onClick={() => handlePageChange(currentpage - 1)}
-                    className="px-4 py-2 bg-blue-600 text- rounded disabled:bg-gray-300"
-                  >
-                    Prev
-                  </button>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => handlePageChange(i + 1)}
-                      className={`px-4 py-2 rounded ${
-                        currentpage === i + 1
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-200 text-gray-700"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    disabled={currentpage === totalPages}
-                    onClick={() => handlePageChange(currentpage + 1)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
-                  >
-                    Next
-                  </button>
-                </div>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-6 p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+  {/* ⬅️ Prev Button */}
+  <button
+    disabled={currentpage === 1}
+    onClick={() => handlePageChange(currentpage - 1)}
+    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+      currentpage === 1
+        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+        : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-105 hover:shadow"
+    }`}
+  >
+    ← Prev
+  </button>
+
+  {/* 🔢 Smart Pagination (Show only nearby pages with ellipses) */}
+  {Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter(
+      (page) =>
+        page === 1 ||
+        page === totalPages ||
+        (page >= currentpage - 2 && page <= currentpage + 2)
+    )
+    .map((page, index, arr) => {
+      const showEllipsis = index > 0 && page - arr[index - 1] > 1;
+      return (
+        <React.Fragment key={page}>
+          {showEllipsis && (
+            <span className="px-2 text-gray-400 select-none">...</span>
+          )}
+          <button
+            onClick={() => handlePageChange(page)}
+            className={`w-9 h-9 text-sm font-semibold rounded-lg transition-all duration-200 ${
+              currentpage === page
+                ? "bg-blue-600 text-white shadow-md scale-105"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {page}
+          </button>
+        </React.Fragment>
+      );
+    })}
+
+  {/* ➡️ Next Button */}
+  <button
+    disabled={currentpage === totalPages}
+    onClick={() => handlePageChange(currentpage + 1)}
+    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+      currentpage === totalPages
+        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+        : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:scale-105 hover:shadow"
+    }`}
+  >
+    Next →
+  </button>
+
+  {/* 🔍 Jump to Page Input */}
+  <div className="flex items-center gap-2 ml-3">
+    <input
+      type="number"
+      min="1"
+      max={totalPages}
+      placeholder="Page"
+      className="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          const page = Number(e.target.value);
+          if (page >= 1 && page <= totalPages) {
+            handlePageChange(page);
+          } else {
+            alert(`Enter a number between 1 and ${totalPages}`);
+          }
+        }
+      }}
+    />
+    <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
+      Page <strong>{currentpage}</strong> of {totalPages}
+    </span>
+  </div>
+</div>
               </>
             ) : (
               <p className="text-gray-500 text-center text-sm sm:text-lg py-4 sm:py-6">

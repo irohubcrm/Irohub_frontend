@@ -9,6 +9,7 @@ import {
   FaHourglassHalf,
   FaTimesCircle,
 } from "react-icons/fa";
+import { useSelector } from "react-redux";
 import {
   getProductPaymentDetails,
   getProducts,
@@ -22,9 +23,14 @@ const formatCurrency = (amount) =>
   }).format(amount || 0);
 
 const AllTransactions = () => {
+  const role = useSelector((state) => state.auth.role);
+  const userId = useSelector((state) => state.auth.user?.id);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["productPayments"],
-    queryFn: getProductPaymentDetails,
+    queryKey: ["productPayments", role, userId],
+    queryFn: () => getProductPaymentDetails({ 
+      agentId: role === 'Agent' ? userId : undefined 
+    }),
   });
 
   const allTransactions = data?.getProductPayment || [];
