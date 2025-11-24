@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
-import MonthlyLeadsChart from '../components/BarChart';
 import { motion } from 'framer-motion';
 import { FaBars, FaChartBar, FaUserMinus, FaUserPlus } from 'react-icons/fa';
 import LeadStatusPieChart from '../components/PieChart';
@@ -15,31 +14,39 @@ import Icons from './Icons';
 import Spinner from '../components/Spinner';
 import { useSelector } from 'react-redux';
 import PaymentDonutCHart from '../components/PaymentReportChart/PaymentDonutCHart';
+import MonthlyLeadsChart from '../components/BarChart';
+import DateRangeDropdown from '../components/DateRangeDropdown';
 
 function Subadminreports() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [activereports, setactivereports] = useState('lead');
-  const [allLeads, setAllLeads] = useState([]); // Current month leads
+  const [allLeads, setAllLeads] = useState([]); // Filtered leads
   const [allTimeLeads, setAllTimeLeads] = useState([]); // All-time leads
   const [isFetchingAll, setIsFetchingAll] = useState(true);
   const [isFetchingAllTime, setIsFetchingAllTime] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  const handleDateRangeChange = (start, end) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
   const user = useSelector((state)=>state.auth.user)
 
-  // Compute current month for filtering
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
-  const monthFilter = `${currentYear}-${currentMonth}`;
-
-  // Fetch the first page of leads for the current month
-  const { data: 
-    initialLeadsData, 
+  // Fetch the first page of leads based on date range
+  const { data:
+    initialLeadsData,
     isLoading,
      isError } = useQuery({
-    queryKey: ['Monthly leads', monthFilter, 1],
-    queryFn: () => listleads({ page: 1, month: monthFilter }),
+    queryKey: ['Filtered leads', startDate, endDate, 1],
+    queryFn: () => listleads({
+      page: 1,
+      startDate: startDate ? startDate.toISOString() : undefined,
+      endDate: endDate ? endDate.toISOString() : undefined
+    }),
   });
 
   // Fetch the first page of all-time leads
@@ -49,7 +56,7 @@ function Subadminreports() {
     queryFn: () => listleads({ page: 1 }), // No month filter
   });
 
-  // Fetch all pages of leads for the current month
+  // Fetch all pages of leads based on date range
   useEffect(() => {
     const fetchAllLeads = async () => {
       if (!initialLeadsData || !initialLeadsData.leads) return;
@@ -60,32 +67,27 @@ function Subadminreports() {
 
       for (let page = 2; page <= totalPages; page++) {
         try {
-          const response = await listleads({ page, month: monthFilter });
+          const response = await listleads({
+            page,
+            startDate: startDate ? startDate.toISOString() : undefined,
+            endDate: endDate ? endDate.toISOString() : undefined
+          });
           if (response.leads && Array.isArray(response.leads)) {
             allFetchedLeads = [...allFetchedLeads, ...response.leads];
           }
         } catch (error) {
-          console.error(`Error fetching page ${page} for current month:`, error);
+          console.error(`Error fetching page ${page} for filtered leads:`, error);
         }
       }
 
-      // Client-side validation to ensure only current month's leads
-      const filteredByMonth = allFetchedLeads.filter((lead) => {
-        const createdAt = new Date(lead.createdAt);
-        return (
-          createdAt.getFullYear() === currentYear &&
-          String(createdAt.getMonth() + 1).padStart(2, '0') === currentMonth
-        );
-      });
-
-      setAllLeads(filteredByMonth);
+      setAllLeads(allFetchedLeads);
       setIsFetchingAll(false);
     };
 
     if (!isLoading && !isError && initialLeadsData) {
       fetchAllLeads();
     }
-  }, [initialLeadsData, isLoading, isError, currentYear, currentMonth]);
+  }, [initialLeadsData, isLoading, isError, startDate, endDate]);
 
   // Fetch all pages of all-time leads
   useEffect(() => {
@@ -145,7 +147,7 @@ function Subadminreports() {
   });
 
   return (
-    <div className="flex min-h-screen w-full bg-gray-100 overflow-x-hidden">
+        <div className="flex min-h-screen w-full bg-gray-100 overflow-x-hidden">
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 z-40">
         <motion.div
@@ -163,37 +165,57 @@ function Subadminreports() {
         transition={{ duration: 0.3 }}
         className="flex-1 flex flex-col min-h-screen overflow-hidden"
       >
+
         {/* Header */}
         <div className="relative flex flex-col sm:flex-row justify-between items-start p-4 sm:p-6 bg-gray-100 border-b border-gray-300">
-          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0 flex items-center">
+
+        {/* <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 bg-white shadow sticky top-0 z-30 border-b"> */}
+            <div className="flex items-center mb-4 sm:mb-0">
             <button
-              className="mr-4 text-blue-600 hover:text-blue-800 transition"
+              // className="text-blue-600 hover:text-blue-800 transition"
               onClick={() => setSidebarVisible(!sidebarVisible)}
             >
-              <FaBars className="text-lg sm:text-xl" />
+              <FaBars className="text-lg sm:text-xl md:text-2xl" />
             </button>
-            Reports
-          </h3>
-          <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-50">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+              Reports
+            </h3>
+          </div>
+          
+
+          {/* Right: Icons */}
+          <div className="absolute top-4 sm:top-5 right-4 sm:right-6 z-[80]">
             <Icons />
           </div>
         </div>
 
         {/* Chart Section */}
+        
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-wrap gap-3 sm:gap-4 mb-6">
-            {['lead', 'staff', 'customer'].map((type) => (
-              <button
-                key={type}
-                className={`px-4 sm:px-6 py-2 rounded-lg font-semibold cursor-pointer text-sm sm:text-base ${
-                  activereports === type ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700'
-                }`}
-                onClick={() => setactivereports(type)}
-              >
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
-            ))}
-          </div>
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6">
+  {/* Left Side: Report Type Buttons */}
+  <div className="flex flex-wrap gap-3 sm:gap-4">
+    {['lead', 'staff', 'customer'].map((type) => (
+      <button
+        key={type}
+        onClick={() => setactivereports(type)}
+        className={`px-4 sm:px-6 py-2 rounded-lg font-semibold cursor-pointer text-sm sm:text-base transition-all duration-200 ${
+          activereports === type
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+        }`}
+      >
+        {type.charAt(0).toUpperCase() + type.slice(1)}
+      </button>
+    ))}
+  </div>
+
+  {/* Right Side: Date Range Filter */}
+  <div className="z-[70] sm:mr-4 ml-auto">
+    <DateRangeDropdown onDateRangeChange={handleDateRangeChange} />
+  </div>
+</div>
+
 
           {activereports === 'lead' && (
             <div className="flex flex-col gap-6 sm:gap-8 w-full">
@@ -209,11 +231,11 @@ function Subadminreports() {
                     <FaChartBar className="text-blue-500 text-lg sm:text-xl" />
                     <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Lead Sources</h4>
                   </div>
-                  <MonthlyLeadsChart type="source" leads={allLeads} />
+                  <MonthlyLeadsChart type="source" leads={allLeads} startDate={startDate} endDate={endDate} />
                 </div>
 
                 <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
-                  <LeadStatusPieChart leads={allLeads} />
+                  <LeadStatusPieChart leads={allLeads} startDate={startDate} endDate={endDate} />
                 </div>
               </motion.div>
 
@@ -226,7 +248,7 @@ function Subadminreports() {
               >
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
                   <h4 className="text-lg sm:text-xl font-semibold text-gray-800">
-                    Leads for {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    Leads {startDate && endDate ? `from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}` : 'for selected date range'}
                   </h4>
                   <input
                     type="text"
@@ -304,7 +326,7 @@ function Subadminreports() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm sm:text-base">No leads added in this month.</p>
+                  <p className="text-gray-500 text-sm sm:text-base">No leads found for the selected date range.</p>
                 )}
               </motion.div>
             </div>
@@ -322,7 +344,7 @@ function Subadminreports() {
                   <FaChartBar className="text-purple-500 text-lg sm:text-xl" />
                   <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Staff-wise Lead Performance</h4>
                 </div>
-                <MonthlyLeadsChart type="staffs" leads={allTimeLeads} />
+                <MonthlyLeadsChart    startDate={startDate} endDate={endDate}/>
               </div>
 
               {/* Staff Table */}
@@ -414,13 +436,16 @@ function Subadminreports() {
                     <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Customer Category Overview</h4>
                   </div>
                   {/* <PolarAreaChart /> */}
-                  <PaymentDonutCHart/>
+                  <PaymentDonutCHart  startDate={startDate} endDate={endDate}/>
                 </div>
 
                 <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition">
                   <div className="flex items-center gap-2 mb-4 border-b pb-2">
-                    <FaChartBar className="text-pink-500 text-lg sm:text-xl" />
-                    <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Customer Status Distribution</h4>
+                    {/* <FaChartBar className="text-pink-500 text-lg sm:text-xl" /> */}
+                    {/* <h4 className="text-lg sm:text-xl font-semibold text-gray-800">Customer Status Distribution</h4> */}
+                    <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-1">
+          📊 Customer Status Distribution
+        </h2>
                   </div>
                   <div className="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
                     <div className="bg-black text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
@@ -433,7 +458,7 @@ function Subadminreports() {
                     </div>
                   </div>
                   <div className="max-w-full mx-auto">
-                    <CustomerStatusPieChart />
+                    <CustomerStatusPieChart  startDate={startDate} endDate={endDate} />
                   </div>
                 </div>
               </motion.div>

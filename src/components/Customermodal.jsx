@@ -10,8 +10,6 @@ import { addleads } from "../services/leadsRouter";
 import { listleadsourcesettings } from "../services/settingservices/leadSourceSettingsRouter";
 import Spinner from "./Spinner";
 import { getProducts } from "../services/paymentstatusRouter";
-
-// ✅ New Import
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/bootstrap.css";
 
@@ -43,35 +41,32 @@ function Customermodal() {
     mutationKey: ["Add Leads"],
     mutationFn: addleads,
     onSuccess: () => {
-      queryclient.invalidateQueries(["Listleads"]);
+      queryclient.invalidateQueries(["Addingleads"]);
     },
   });
 
-  // ✅ Validation schema
-  // ✅ Validation schema
+  // ✅ Yup Validation Schema
   const customerformvalidation = Yup.object({
     name: Yup.string()
       .required("Name is required")
       .matches(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces")
       .min(3, "Name must be at least 3 characters"),
-
     email: Yup.string()
       .required("Email is required")
       .email("Invalid email format"),
-
     mobile: Yup.string()
-      .required("Mobile number is required")
-      .matches(
-        /^\+?[1-9]\d{6,14}$/,
-        "Enter a valid international phone number (e.g., +14155552671)"
-      ),
-
+          .matches(/^[0-9,-,+]+$/, "Mobile number must contain only digits")
+          .min(7, "Mobile number is too short")
+          .max(15, "Mobile number is too long")
+          .required("Mobile is required"),
     countryCode: Yup.string().required("Country code is required"),
-
     source: Yup.string(),
     location: Yup.string(),
-    requiredProductType: Yup.string(),
-    leadValue: Yup.number(),
+    interestedproduct:Yup.string(),
+ leadvalue: Yup.number()
+    .required("Lead value is required")
+    .typeError("Lead value must be a valid number")
+    .min(0, "Lead value cannot be negative"),
   });
 
   // ✅ Formik setup
@@ -82,20 +77,36 @@ function Customermodal() {
       mobile: "",
       source: "",
       location: "",
-      requiredProductType: "",
+        interestedproduct: "",
       countryCode: "+91",
-      leadValue: "",
+      leadvalue: "",
     },
     validationSchema: customerformvalidation,
+    validateOnChange: true,
+    validateOnBlur: true,
 
-    onSubmit: async (values) => {
-      // 🧹 Ensure the number starts with '+'
+    onSubmit: async (values, { setTouched }) => {
+      // ✅ Mark all fields as touched to trigger validation
+      setTouched({
+        name: true,
+        email: true,
+        mobile: true,
+        countryCode: true,
+        source: true,
+        location: true,
+        interestedproduct: true,
+        leadvalue: true,
+      });
+
+      // ✅ Validate form
+      const isValidForm = await customerForm.validateForm();
+      if (Object.keys(isValidForm).length !== 0) return; // stop submit if invalid
+
+      // 🧹 Ensure mobile formatting
       let mobile = values.mobile.replace(/\s+/g, "");
       if (!mobile.startsWith("+")) {
         mobile = `${values.countryCode}${mobile}`;
       }
-
-      // 🧹 Remove any accidental duplicate '+' or double code
       mobile = mobile.replace(/\++/g, "+").replace(/(\+\d+)\1+/, "$1");
 
       const payload = { ...values, mobile };
@@ -109,20 +120,27 @@ function Customermodal() {
     },
   });
 
-  // ✅ Handle phone change dynamically
+  // ✅ Handle phone input change
   const handlePhoneChange = (value, country) => {
-    setPhone(value);
+    const formattedValue = `+${value.replace(/\s+/g, "")}`;
+    setPhone(formattedValue);
     const dialCode = `+${country.dialCode}`;
     setCountryCode(dialCode);
 
-    const cleaned = value.replace(/\s+/g, "");
-    customerForm.setFieldValue("mobile", cleaned);
+    const nationalNumber = formattedValue.replace(dialCode, "");
+    const regex = /^\d{6,15}$/;
+    const valid = regex.test(nationalNumber);
+    setIsValid(valid);
+
+    customerForm.setFieldValue("mobile", formattedValue);
+    customerForm.setFieldValue("countryCode", dialCode);
   };
 
   const filteredsource = fetchleadsource?.data?.getLeadsource?.filter(
     (source) => source.active
   );
 
+  
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 p-4 sm:p-0">
       <motion.div
@@ -134,7 +152,7 @@ function Customermodal() {
       >
         {fetchleadsource.isLoading && <Spinner />}
 
-        {/* Left Side Gradient */}
+        {/* Left Section */}
         <div className="bg-gradient-to-b from-[#00B5A6] to-[#1E6DB0] w-full md:w-1/3 flex flex-col items-center justify-center p-6 text-white">
           <FaUserPlus className="text-6xl md:text-[80px] mb-4" />
           <h2 className="text-xl md:text-2xl font-bold">Add New Lead</h2>
@@ -143,7 +161,7 @@ function Customermodal() {
           </p>
         </div>
 
-        {/* Right Side Form */}
+        {/* Right Section - Form */}
         <div className="relative w-full md:w-2/3 p-6">
           <button
             onClick={() => dispatch(toggleCustomermodal())}
@@ -157,10 +175,9 @@ function Customermodal() {
           </h3>
 
           <form onSubmit={customerForm.handleSubmit} className="space-y-4">
-            {/* Name Field */}
+            {/* Name */}
             <div>
               <input
-                key="name"
                 type="text"
                 name="name"
                 {...customerForm.getFieldProps("name")}
@@ -174,50 +191,31 @@ function Customermodal() {
               )}
             </div>
 
-            {/* ✅ Country Code + Mobile Field */}
+            {/* Phone */}
             <div>
               <PhoneInput
                 country={"in"}
                 value={phone}
-                onChange={(value, country) => {
-                  // Always store full international format with '+'
-                  const formattedValue = `+${value.replace(/\s+/g, "")}`;
-
-                  setPhone(formattedValue);
-                  const dialCode = `+${country.dialCode}`;
-                  setCountryCode(dialCode);
-
-                  // Extract only the national number part
-                  const nationalNumber = formattedValue.replace(dialCode, "");
-
-                  // Validate length and format
-                  const regex = /^\d{6,15}$/;
-                  const valid = regex.test(nationalNumber);
-                  setIsValid(valid);
-
-                  // Save full formatted number in Formik
-                  customerForm.setFieldValue("mobile", formattedValue);
-                  customerForm.setFieldValue("countryCode", dialCode);
-                }}
+                onChange={handlePhoneChange}
                 enableSearch
-                inputClass="!w-full !pl-16 !pr-4 !py-3 !text-gray-800 !border !border-gray-300 !rounded-lg focus:!ring-2 focus:!ring-blue-400"
+                inputClass="!w-full !pl-22 !pr-4 !py-3 !text-gray-800 !border !border-gray-300 !rounded-lg focus:!ring-2 focus:!ring-blue-400"
                 buttonClass="!border-gray-300 !bg-white !rounded-l-lg !p-3"
                 containerClass="!w-full"
                 dropdownClass="!text-gray-800"
                 placeholder="Enter phone number"
               />
-
-              {!isValid && (
+              {(!isValid ||
+                (customerForm.touched.mobile && customerForm.errors.mobile)) && (
                 <p className="text-red-500 text-sm mt-2">
-                  ⚠️ Please enter a valid phone number for selected country
+                  {customerForm.errors.mobile ||
+                    "⚠️ Please enter a valid phone number for selected country"}
                 </p>
               )}
             </div>
 
-            {/* ✅ Email Field */}
+            {/* Email */}
             <div>
               <input
-                key="email"
                 type="email"
                 name="email"
                 {...customerForm.getFieldProps("email")}
@@ -231,10 +229,9 @@ function Customermodal() {
               )}
             </div>
 
-            {/* Source Dropdown */}
+            {/* Source */}
             <div>
               <select
-                key="source"
                 name="source"
                 {...customerForm.getFieldProps("source")}
                 className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
@@ -251,7 +248,6 @@ function Customermodal() {
             {/* Location */}
             <div>
               <input
-                key="location"
                 type="text"
                 name="location"
                 {...customerForm.getFieldProps("location")}
@@ -263,14 +259,13 @@ function Customermodal() {
             {/* Product */}
             <div>
               <select
-                key="requiredProductType"
-                name="requiredProductType"
-                {...customerForm.getFieldProps("requiredProductType")}
+                name="interestedproduct"
+                {...customerForm.getFieldProps("interestedproduct")}
                 className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
               >
                 <option value="">-- Select Product --</option>
                 {getSelectedProduct?.map((product) => (
-                  <option key={product._id} value={product._id}>
+                  <option key={product._id} value={product.title}>
                     {product.title}
                   </option>
                 ))}
@@ -280,13 +275,18 @@ function Customermodal() {
             {/* Lead Value */}
             <div>
               <input
-                key="leadValue"
                 type="text"
-                name="leadValue"
-                {...customerForm.getFieldProps("leadValue")}
+                name="leadvalue"
+                {...customerForm.getFieldProps("leadvalue")}
                 className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
                 placeholder="Enter lead value"
               />
+              {customerForm.touched.leadvalue &&
+                customerForm.errors.leadvalue && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {customerForm.errors.leadvalue}
+                  </p>
+                )}
             </div>
 
             {/* Submit */}

@@ -1,3 +1,199 @@
+// import React from "react";
+// import { Chart as ChartJS, defaults } from "chart.js/auto";
+// import ChartDataLabels from "chartjs-plugin-datalabels";
+// import { Line } from "react-chartjs-2";
+// import { useQuery } from "@tanstack/react-query";
+// import { getpaymentDetailsed } from "../../services/paymentstatusRouter";
+
+// ChartJS.register(ChartDataLabels);
+// defaults.responsive = true;
+// defaults.maintainAspectRatio = false;
+
+// // ✅ Format currency into K, L, Cr
+// const formatCurrency = (value) => {
+//   if (value >= 10000000) return `${(value / 10000000).toFixed(2)} Cr`;
+//   if (value >= 100000) return `${(value / 100000).toFixed(2)} L`;
+//   if (value >= 1000) return `${(value / 1000).toFixed(1)} K`;
+//   return value.toFixed(0);
+// };
+
+// export default function MonthlyPaymentChart({ startDate, endDate }) {
+//   const { data, isLoading, isError } = useQuery({
+//     queryKey: ["paymentDetails", startDate, endDate],
+//     queryFn: () => getpaymentDetailsed({ startDate, endDate }),
+//   });
+
+//   if (isLoading)
+//     return (
+//       <div className="flex justify-center items-center h-full text-gray-500">
+//         Loading chart...
+//       </div>
+//     );
+//   if (isError)
+//     return (
+//       <div className="flex justify-center items-center h-full text-red-500">
+//         Error loading chart data
+//       </div>
+//     );
+
+//   const payments = data?.allPayment || [];
+
+//   // ✅ Filter payments by date range
+//   const filteredPayments = payments.filter((item) => {
+//     if (!item.createdAt) return false;
+//     const paymentDate = new Date(item.createdAt);
+//     if (startDate && endDate) {
+//       return paymentDate >= startDate && paymentDate <= endDate;
+//     }
+//     return true;
+//   });
+
+//   // ✅ Months (Jan–Dec)
+//   const months = [
+//     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+//     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+//   ];
+
+//   // ✅ Monthly totals
+//   const monthlyPaidTotals = Array(12).fill(0);
+//   const monthlyTotalAmounts = Array(12).fill(0);
+
+//   filteredPayments.forEach((item) => {
+//     const monthIndex = new Date(item.createdAt).getMonth();
+//     monthlyPaidTotals[monthIndex] += item.totalPaid || 0;
+//     monthlyTotalAmounts[monthIndex] += item.totalAmount || 0;
+//   });
+
+//   // ✅ Chart Data (Dual Axis)
+//   const chartData = {
+//     labels: months,
+//     datasets: [
+//       {
+//         label: "Total Paid (₹)",
+//         data: monthlyPaidTotals,
+//         borderColor: "#2563eb",
+//         backgroundColor: "rgba(37, 99, 235, 0.15)",
+//         tension: 0.4,
+//         borderWidth: 3,
+//         yAxisID: "y1",
+//         pointBackgroundColor: "#2563eb",
+//         pointRadius: 5,
+//         pointHoverRadius: 7,
+//       },
+//       {
+//         label: "Total Amount (₹)",
+//         data: monthlyTotalAmounts,
+//         borderColor: "#f59e0b",
+//         backgroundColor: "rgba(245, 158, 11, 0.15)",
+//         tension: 0.4,
+//         borderWidth: 3,
+//         yAxisID: "y2",
+//         pointBackgroundColor: "#f59e0b",
+//         pointRadius: 5,
+//         pointHoverRadius: 7,
+//       },
+//     ],
+//   };
+
+//   // ✅ Chart Options
+//   const chartOptions = {
+//     layout: {
+//       padding: { top: 20, right: 20, bottom: 20, left: 10 },
+//     },
+//     plugins: {
+//       title: {
+//         display: true,
+//         text: "Monthly Payment Overview (₹ in Lakhs)",
+//         font: { size: 20, weight: "bold" },
+//         color: "#1e293b",
+//         padding: { top: 10, bottom: 25 },
+//       },
+//       legend: {
+//         position: "bottom",
+//         labels: {
+//           color: "#374151",
+//           boxWidth: 20,
+//           font: { size: 13, family: "'Inter', sans-serif" },
+//           padding: 15,
+//         },
+//       },
+//       datalabels: {
+//         color: "#111",
+//         anchor: "end",
+//         align: "top",
+//         font: { size: 11, weight: "bold" },
+//         formatter: (value) => (value ? `₹${formatCurrency(value)}` : ""),
+//       },
+//       tooltip: {
+//         mode: "index",
+//         intersect: false,
+//         callbacks: {
+//           label: (context) => {
+//             const datasetLabel = context.dataset.label || "";
+//             const value = context.raw;
+//             return `${datasetLabel}: ₹${formatCurrency(value)}`;
+//           },
+//         },
+//       },
+//     },
+//     interaction: { mode: "index", intersect: false },
+//     scales: {
+//       x: {
+//         title: {
+//           display: true,
+//           text: "Month",
+//           color: "#374151",
+//           font: { size: 14, weight: "bold" },
+//         },
+//         ticks: {
+//           color: "#4b5563",
+//           font: { size: 12 },
+//         },
+//         grid: { display: false },
+//       },
+//       y1: {
+//         position: "left",
+//         title: {
+//           display: true,
+//           text: "Total Paid (₹ in L)",
+//           color: "#2563eb",
+//           font: { size: 14, weight: "bold" },
+//         },
+//         ticks: {
+//           color: "#2563eb",
+//           callback: (value) => `₹${formatCurrency(value)}`,
+//         },
+//         grid: { color: "#e2e8f0" },
+//         beginAtZero: true,
+//       },
+//       y2: {
+//         position: "right",
+//         title: {
+//           display: true,
+//           text: "Total Amount (₹ in L)",
+//           color: "#f59e0b",
+//           font: { size: 14, weight: "bold" },
+//         },
+//         ticks: {
+//           color: "#f59e0b",
+//           callback: (value) => `₹${formatCurrency(value)}`,
+//         },
+//         grid: { drawOnChartArea: false },
+//         beginAtZero: true,
+//       },
+//     },
+//   };
+
+//   // ✅ Full-View Model Layout
+//   return (
+//     <div className="w-full h-full bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col">
+//       <div className="flex-1 p-3 sm:p-4 lg:p-5 h-full">
+//         <Line data={chartData} options={chartOptions} />
+//       </div>
+//     </div>
+//   );
+// }
+
 import React from "react";
 import { Chart as ChartJS, defaults } from "chart.js/auto";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -6,98 +202,116 @@ import { useQuery } from "@tanstack/react-query";
 import { getpaymentDetailsed } from "../../services/paymentstatusRouter";
 
 ChartJS.register(ChartDataLabels);
-
 defaults.responsive = true;
 defaults.maintainAspectRatio = false;
 
-export default function MonthlyPaymentChart() {
+// ✅ Format currency into K, L, Cr
+const formatCurrency = (value) => {
+  if (value >= 10000000) return `${(value / 10000000).toFixed(2)} Cr`;
+  if (value >= 100000) return `${(value / 100000).toFixed(2)} L`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} K`;
+  return value.toFixed(0);
+};
+
+export default function MonthlyPaymentChart({ startDate, endDate }) {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["paymentDetails"],
-    queryFn: getpaymentDetailsed,
+    queryKey: ["paymentDetails", startDate, endDate],
+    queryFn: () => getpaymentDetailsed({ startDate, endDate }),
   });
 
-  if (isLoading) return <p>Loading chart...</p>;
-  if (isError) return <p className="text-red-500">Error loading chart data</p>;
+  if (isLoading)
+    return (
+      <div className="flex justify-center items-center h-[300px] text-gray-500 font-medium">
+        Loading chart...
+      </div>
+    );
+  if (isError)
+    return (
+      <div className="flex justify-center items-center h-[300px] text-red-500 font-medium">
+        Error loading chart data
+      </div>
+    );
 
   const payments = data?.allPayment || [];
 
-  // ✅ Months (Jan–Dec)
+  const filteredPayments = payments.filter((item) => {
+    if (!item.createdAt) return false;
+    const paymentDate = new Date(item.createdAt);
+    if (startDate && endDate) {
+      return paymentDate >= startDate && paymentDate <= endDate;
+    }
+    return true;
+  });
+
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
   ];
 
-  // ✅ Monthly totals for Paid and Total Amount
   const monthlyPaidTotals = Array(12).fill(0);
   const monthlyTotalAmounts = Array(12).fill(0);
 
-  payments.forEach((item) => {
-    if (!item.createdAt) return;
+  filteredPayments.forEach((item) => {
     const monthIndex = new Date(item.createdAt).getMonth();
     monthlyPaidTotals[monthIndex] += item.totalPaid || 0;
     monthlyTotalAmounts[monthIndex] += item.totalAmount || 0;
   });
 
-  // ✅ Scale factor to inflate values for display (e.g., multiply by 1000 to simulate larger amounts)
-  const scaleFactor = 1000;
-
-  // ✅ Scaled data for chart display
-  const scaledPaidTotals = monthlyPaidTotals.map(value => value * scaleFactor);
-  const scaledTotalAmounts = monthlyTotalAmounts.map(value => value * scaleFactor);
-
-  // ✅ Chart Data
   const chartData = {
     labels: months,
     datasets: [
       {
         label: "Total Paid (₹)",
-        data: scaledPaidTotals, // Use scaled data
+        data: monthlyPaidTotals,
         borderColor: "#2563eb",
-        backgroundColor: "#2563eb",
-        fill: false,
+        backgroundColor: "rgba(37, 99, 235, 0.1)",
         tension: 0.4,
         borderWidth: 3,
+        yAxisID: "y1",
         pointBackgroundColor: "#2563eb",
-        pointBorderWidth: 2,
-        pointRadius: 5,
+        pointRadius: 4,
         pointHoverRadius: 7,
-        borderDash: [6, 3],
       },
       {
         label: "Total Amount (₹)",
-        data: scaledTotalAmounts, // Use scaled data
+        data: monthlyTotalAmounts,
         borderColor: "#f59e0b",
-        backgroundColor: "#f59e0b",
-        fill: false,
+        backgroundColor: "rgba(245, 158, 11, 0.15)",
         tension: 0.4,
         borderWidth: 3,
+        yAxisID: "y2",
         pointBackgroundColor: "#f59e0b",
-        pointBorderWidth: 2,
-        pointRadius: 5,
+        pointRadius: 4,
         pointHoverRadius: 7,
       },
     ],
   };
 
-  // ✅ Chart Options
   const chartOptions = {
+    layout: { padding: { top: 20, right: 20, bottom: 20, left: 10 } },
     plugins: {
       title: {
         display: true,
-        text: "Monthly Payment Report (Jan–Dec)",
-        font: { size: 18, weight: "bold" },
-        color: "#111827",
+        text: "Monthly Payment Overview",
+        font: { size: 18, weight: "bold", family: "'Inter', sans-serif" },
+        color: "#1e293b",
+        padding: { top: 10, bottom: 20 },
       },
       legend: {
-        position: "top",
-        labels: { color: "#374151", font: { size: 14 } },
+        position: "bottom",
+        labels: {
+          color: "#334155",
+          boxWidth: 20,
+          font: { size: 13, family: "'Inter', sans-serif" },
+          padding: 15,
+        },
       },
       datalabels: {
         color: "#111",
         anchor: "end",
         align: "top",
-        font: { size: 12, weight: "bold" },
-        formatter: (value) => (value ? `₹${(value / scaleFactor).toFixed(2)}` : ""), // Show original value
+        font: { size: 10, weight: "bold" },
+        formatter: (value) => (value ? `₹${formatCurrency(value)}` : ""),
       },
       tooltip: {
         mode: "index",
@@ -105,52 +319,81 @@ export default function MonthlyPaymentChart() {
         callbacks: {
           label: (context) => {
             const datasetLabel = context.dataset.label || "";
-            const value = context.raw / scaleFactor; // Convert back to original value
-            return `${datasetLabel}: ₹${value.toFixed(2)}`;
+            const value = context.raw;
+            return `${datasetLabel}: ₹${formatCurrency(value)}`;
           },
         },
       },
     },
-    interaction: {
-      mode: "index",
-      intersect: false,
-    },
+    interaction: { mode: "index", intersect: false },
     scales: {
       x: {
         title: {
           display: true,
           text: "Month",
-          color: "#374151",
+          color: "#475569",
           font: { size: 14, weight: "bold" },
         },
-        ticks: { color: "#4b5563" },
+        ticks: { color: "#475569", font: { size: 12 } },
         grid: { display: false },
       },
-      y: {
+      y1: {
+        position: "left",
         title: {
           display: true,
-          text: "Amount (₹)",
-          color: "#374151",
-          font: { size: 14, weight: "bold" },
+          text: "Total Paid (₹)",
+          color: "#2563eb",
+          font: { size: 13, weight: "bold" },
         },
-        beginAtZero: true,
         ticks: {
-          color: "#4b5563",
-          callback: (value) => `₹${(value / scaleFactor).toFixed(0)}`, // Show original scale on y-axis
+          color: "#2563eb",
+          callback: (value) => `₹${formatCurrency(value)}`,
         },
-        grid: { color: "#e5e7eb" },
-        suggestedMax: Math.max(...scaledPaidTotals, ...scaledTotalAmounts) * 1.1, // Ensure chart accommodates scaled values
+        grid: { color: "#e2e8f0" },
+        beginAtZero: true,
+      },
+      y2: {
+        position: "right",
+        title: {
+          display: true,
+          text: "Total Amount (₹)",
+          color: "#f59e0b",
+          font: { size: 13, weight: "bold" },
+        },
+        ticks: {
+          color: "#f59e0b",
+          callback: (value) => `₹${formatCurrency(value)}`,
+        },
+        grid: { drawOnChartArea: false },
+        beginAtZero: true,
       },
     },
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg mt-5 hover:shadow-xl transition-shadow duration-300">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-      
-      </h2>
-      <div className="h-[400px]">
-        <Line data={chartData} options={chartOptions} />
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-gray-200 flex justify-between items-center bg-white/80 backdrop-blur-sm">
+        <h4 className="text-lg sm:text-xl font-semibold text-gray-800">
+          💰 Monthly Payment Insights
+        </h4>
+        <span className="text-xs sm:text-sm text-gray-500">
+          {startDate && endDate
+            ? `${startDate.toLocaleDateString()} → ${endDate.toLocaleDateString()}`
+            : "All Time"}
+        </span>
+      </div>
+
+      {/* Chart Section (height fixed and adaptive) */}
+      <div className="flex-1 px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
+        <div className="relative w-full h-[300px] sm:h-[350px] md:h-[380px] lg:h-[400px]">
+          <Line data={chartData} options={chartOptions} />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-50 text-gray-600 text-xs sm:text-sm py-2 text-center border-t border-gray-200">
+        Updated in real-time from payment records
       </div>
     </div>
   );
