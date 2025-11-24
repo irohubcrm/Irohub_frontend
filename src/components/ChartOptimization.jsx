@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 // Assume this is a third-party chart component
 const GenericChartComponent = ({ data }) => {
   // This component is expensive to render
-  console.log('Rendering GenericChartComponent...');
+
   return <div>Chart with {data.length} data points</div>;
 };
 

@@ -14,7 +14,6 @@ export const editpaymentstatus = async (id, paymentstatusdata) => {
 
 export const getpaymentstatus = async (customerId) => {
   const response = await axios.get(`${API_URL}/paymentstatus/${customerId}`, getAuthorized());
-  console.log("response",response.data)
   return response.data;
   
 };
@@ -108,7 +107,7 @@ export const deletePayment = async (transactId) => {
 }
 
 export const updatePayment = async ({ transactId, newData }) => {
-  // console.log("Updating payment:", transactId, newData);
+
   const { data } = await axios.put(
     `${API_URL}/payment/update-transaction/${transactId}`,
     { newData },

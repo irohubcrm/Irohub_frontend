@@ -13,13 +13,11 @@ export const editstaff = async ({ staffId, staffdata }) => {
 
 export const liststaffs = async () => {
     const { data } = await axios.get(`${API_URL}/staffs/get-staffs`, getAuthorized())
-    console.log(data,"listStaff")
     return data
 }
 
 export const listagents = async () => {
     const { data } = await axios.get(`${API_URL}/staffs/get-agents`, getAuthorized())
-    console.log(data,"listagentd")
     return data
 }
 

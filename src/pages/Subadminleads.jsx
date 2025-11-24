@@ -145,7 +145,6 @@ function Subadminleads() {
       }),
     keepPreviousData: true,
   });
-  console.log("tset",fetchleads)
 
   const fetchstaffs = useQuery({
     queryKey: ["Liststaffs"],

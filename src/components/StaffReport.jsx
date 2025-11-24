@@ -21,7 +21,7 @@ const StaffReport = () => {
     queryKey: ["All time leads", staffPage],
     queryFn: () => listleads({ page: staffPage }),
   });
-  console.log("initialAllTimeLeadsData", initialAllTimeLeadsData)
+
   const {
     data: Staffsdata,
     isLoading: loading,
@@ -30,16 +30,16 @@ const StaffReport = () => {
     queryKey: ["List Staffs"],
     queryFn: liststaffs,
   });
-  console.log("staffsData", Staffsdata)
+
   const { data: Taskdata } = useQuery({
     queryKey: ["Task Data"],
     queryFn: listtask,
   });
-  console.log("Taskdata", Taskdata)
+
   // 2. Your fast Hash Map calculation
   const staffPerformanceData = useMemo(() => {
     const leads = initialAllTimeLeadsData?.leads || [];
-    console.log("leads11", leads)
+
     const tasks = Taskdata?.task || [];
     const staffs = Staffsdata || [];
 
@@ -54,9 +54,9 @@ const StaffReport = () => {
         completedTask: 0,
       });
     }
-    console.log("leads", leads)
+
     for (const lead of leads) {
-      console.log("leadsssss", lead.assignedTo, lead.updatedBy, lead.status)
+
       const assignedId = lead.assignedTo?._id;
       const updatedById = lead.updatedBy?._id;
 
@@ -75,7 +75,6 @@ const StaffReport = () => {
         stats.get(updatedById).openCount += 1;
       }
     }
-    console.log("first");
     for (const task of tasks) {
       const staffId = task.updatedBy?._id;
       if (task.status === "completed" && stats.has(staffId)) {
