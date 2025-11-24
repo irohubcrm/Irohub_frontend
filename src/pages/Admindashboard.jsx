@@ -1,135 +1,79 @@
-import React, { useState, useEffect, useMemo } from "react";
-import Sidebar from "./Sidebar";
-import AreaChart from "../components/Areachart";
-import MonthlyLeadsChart from "../components/BarChart";
-import DailyLeadsOverviewChart from "../components/DailyLeadsOverviewChart";
-import LeadSourceProgressChart from "../components/LeadSourceChart";
-import LeadStatusPieChart from "../components/PieChart";
-import LeadStatusDonutChart from "../components/DonutChart";
-
-import Spinner from "../components/Spinner";
-import Icons from "./Icons";
-import { motion } from "framer-motion";
-import { FaBars, FaChartBar, FaPhoneAlt, FaTasks, FaUser } from "react-icons/fa";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { listleads } from "../services/leadsRouter";
-import DateRangeDropdown from "../components/DateRangeDropdown";
-import moment from "moment";
-import { listtask } from "../services/tasksRouter";
+import React, { useState, useMemo } from 'react';
+import Sidebar from './Sidebar';
+import AreaChart from '../components/Areachart';
+import MonthlyLeadsChart from '../components/BarChart';
+import { motion } from 'framer-motion';
+import { FaBars, FaChartBar, FaPhoneAlt, FaTasks, FaUser } from 'react-icons/fa';
+import LeadSourceProgressChart from '../components/LeadSourceChart';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import LeadStatusDonutChart from '../components/DonutChart';
+import { useSelector } from 'react-redux';
+import { getDashboardStats } from '../services/dashboardRouter';
+import Icons from './Icons';
+import Spinner from '../components/Spinner';
+import moment from 'moment';
 
 function Admindashboard() {
-  const queryClient = useQueryClient();
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const userlogged = useSelector((state) => state.auth.user);
   const metadata = useSelector((state) => state.auth.metadataUser);
-  const [startDateFilter, setStartDateFilter] = useState(null);
-  const [endDateFilter, setEndDateFilter] = useState(null);
 
-  // Invalidate cached queries on mount
-  useEffect(() => {
-    queryClient.invalidateQueries(["List leads"]);
-    queryClient.invalidateQueries(["List tasks"]);
-  }, [queryClient]);
-
-  // Fetch Leads
-  const {
-    data: leads,
-    isLoading: leadsLoading,
-    error: leadsError,
-  } = useQuery({
-    queryKey: ["List leads", userlogged.role, startDateFilter, endDateFilter],
-    queryFn: () =>
-      listleads({
-        noLimit: userlogged.role === "Admin",
-        startDate: startDateFilter ? startDateFilter.toISOString() : undefined,
-        endDate: endDateFilter ? endDateFilter.toISOString() : undefined,
-      }),
+  const { data: dashboardData, isLoading, error } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: getDashboardStats,
     retry: 3,
   });
 
-  // Fetch Tasks
-  const {
-    data: tasks,
-    isLoading: tasksLoading,
-    error: tasksError,
-  } = useQuery({
-    queryKey: ["List tasks"],
-    queryFn: listtask,
-    retry: 3,
-  });
-
-  if (leadsError || tasksError) {
-    console.error("Query error:", leadsError || tasksError);
-    return (
-      <div className="p-4 text-red-600">
-        Error loading data. Please try again.
-      </div>
-    );
+  // Handle errors
+  if (error) {
+    console.error('Query error:', error);
+    return <div className="p-4 text-red-600">Error loading data. Please try again.</div>;
   }
 
-  // ==============================
-  // Derived Values (Optimized)
-  // ==============================
-  const totalFollowups = useMemo(
-    () =>
-      leads?.leads?.length
-        ? leads.leads.filter((lead) => lead.status === "open")
-        : [],
-    [leads]
-  );
+  if (isLoading) {
+    return <Spinner />;
+  }
 
-  const closedLeads = useMemo(
-    () =>
-      leads?.leads?.length
-        ? leads.leads.filter(
-            (lead) =>
-              ["closed", "converted", "rejected"].includes(lead.status) &&
-              (lead.updatedBy?._id === userlogged?.id ||
-                lead.updatedBy === userlogged?.id)
-          )
-        : [],
-    [leads, userlogged]
-  );
+  const {
+    weeklyLeads = [],
+    monthlyLeads = [],
+    leadStatus = [],
+    leadSource = [],
+    tasks = [],
+    allTasks = [],
+    totalLeads = 0,
+    totalFollowups = 0,
+    closedLeads = 0,
+  } = dashboardData || {};
 
-  const completedTask = useMemo(
-    () =>
-      tasks?.task?.length
-        ? tasks.task.filter((task) => task.status === "completed")
-        : [],
-    [tasks]
-  );
+  const weeklyLeadsData = {
+    labels: weeklyLeads.map(d => moment().day(d._id).format('ddd')),
+    datasets: [
+      { label: 'Opened', data: weeklyLeads.map(d => d.open_leads), backgroundColor: 'rgba(54, 162, 235, 0.2)', borderColor: 'rgba(54, 162, 235, 1)', fill: true },
+      { label: 'Closed', data: weeklyLeads.map(d => d.closed_leads), backgroundColor: 'rgba(255, 99, 132, 0.2)', borderColor: 'rgba(255, 99, 132, 1)', fill: true },
+    ],
+  };
 
-  const assignedTask = useMemo(
-    () =>
-      tasks?.task?.length
-        ? tasks.task.filter((task) => task.assignedTo === userlogged?.id)
-        : [],
-    [tasks, userlogged]
-  );
+  const monthlyLeadsData = {
+    labels: monthlyLeads.map(d => moment().month(d._id - 1).format('MMM')),
+    datasets: [
+      { label: 'New Leads', data: monthlyLeads.map(d => d.new_leads), backgroundColor: 'rgba(54, 162, 235, 0.6)' },
+      { label: 'Closed Leads', data: monthlyLeads.map(d => d.closed_leads), backgroundColor: 'rgba(255, 205, 86, 0.6)' },
+    ],
+  };
 
-  const completedAssignedtask = useMemo(
-    () =>
-      tasks?.task?.length
-        ? tasks.task.filter(
-            (task) =>
-              task.status === "completed" &&
-              task.assignedTo === userlogged?.id &&
-              task.updatedBy === userlogged?.id
-          )
-        : [],
-    [tasks, userlogged]
-  );
+  const leadStatusData = leadStatus.map(s => ({ status: s._id, count: s.count }));
 
-  const isDataLoading = leadsLoading || tasksLoading;
+  const totalLeadSource = leadSource.reduce((acc, curr) => acc + curr.count, 0);
+  const leadSourceData = leadSource.map(s => ({ ...s, percent: totalLeadSource > 0 ? (s.count / totalLeadSource * 100).toFixed(2) : 0 }));
 
-  // ==============================
-  // Render
-  // ==============================
+  const completedTask = allTasks.filter(task => task.status === 'completed') || [];
+  const assignedTask = tasks || [];
+  const completedAssignedtask = tasks.filter(task => task.status === 'completed') || [];
+
   return (
     <div className="flex h-screen w-screen bg-gray-100 overflow-x-hidden">
-      {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 z-40">
         <motion.div
           animate={{ x: sidebarVisible ? 0 : -260 }}
@@ -140,15 +84,12 @@ function Admindashboard() {
         </motion.div>
       </div>
 
-      {/* Main Content */}
       <motion.div
         animate={{ marginLeft: sidebarVisible ? 256 : 0 }}
         transition={{ duration: 0.3 }}
-        className="flex-1 flex flex-col h-screen"
+        className="flex-1 flex flex-col (= h-screen"
       >
-        {isDataLoading && <Spinner />}
 
-        {/* Header */}
         <div className="relative flex justify-between items-start">
           <div className="p-4 sm:p-6 lg:p-8 bg-gray-100 border-b border-gray-300">
             <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center">
@@ -161,190 +102,226 @@ function Admindashboard() {
               Dashboard
             </h3>
           </div>
-          <div className="flex items-center gap-2 mt-4 absolute top-4 sm:top-6 right-4 sm:right-6 z-50">
-            <DateRangeDropdown onDateRangeChange={(start, end) => {
-              setStartDateFilter(start);
-              setEndDateFilter(end);
-            }} />
+          <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-50">
             <Icons />
           </div>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            {/* Lead Summary */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <FaChartBar className="text-blue-500 text-base sm:text-xl" />
+            {userlogged?.role !== 'Agent' ? (
+              <Link to="/subadminreports">
+                <motion.div
+                  className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <FaChartBar className="text-blue-500 text-base sm:text-xl" />
+                    </div>
+                    <h4 className="text-sm sm:text-md font-medium text-gray-600">Lead</h4>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">{closedLeads}</h1>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-500">Closed</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Total <span className="text-blue-500">{totalLeads}</span> Lead
+                  </p>
+                </motion.div>
+              </Link>
+            ) : (
+              <motion.div
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <FaChartBar className="text-blue-500 text-base sm:text-xl" />
+                  </div>
+                  <h4 className="text-sm sm:text-md font-medium text-gray-600">Lead</h4>
                 </div>
-                <h4 className="text-sm sm:text-md font-medium text-gray-600">
-                  Lead
-                </h4>
-              </div>
-              <div className="flex items-center gap-2 mt-3 sm:mt-4">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">
-                  {closedLeads.length}
-                </h1>
-                <p className="text-xs sm:text-sm font-semibold text-gray-500">
-                  Closed
+                <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">{closedLeads}</h1>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-500">Closed</p>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Total <span className="text-blue-500">{totalLeads}</span> Lead
                 </p>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Total{" "}
-                <span className="text-blue-500">
-                  {leads?.leads?.length || 0}
-                </span>{" "}
-                Leads
-              </p>
-            </motion.div>
+              </motion.div>
+            )}
 
-            {/* FollowUp Summary */}
+            <Link to="/followups">
+              <motion.div
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <FaUser className="text-blue-500 text-base sm:text-xl" />
+                  </div>
+                  <h4 className="text-sm sm:text-md font-medium text-gray-600">FollowUp</h4>
+                </div>
+                <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">{closedLeads}</h1>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-500">Completed</p>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Total <span className="text-blue-500">{totalFollowups}</span> FollowUp
+                </p>
+              </motion.div>
+            </Link>
+
+            <Link to="/tasks">
+              <motion.div
+                className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <FaPhoneAlt className="text-blue-500 text-base sm:text-xl" />
+                  </div>
+                  <h4 className="text-sm sm:text-md font-medium text-gray-600">Calls</h4>
+                </div>
+                <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">0</h1>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-500">Closed</p>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Total <span className="text-blue-500">0</span> Calls
+                </p>
+              </motion.div>
+            </Link>
+
+            {userlogged?.role === 'Admin' ? (
+              <Link to="/tasks">
+                <motion.div
+                  className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <FaTasks className="text-blue-500 text-base sm:text-xl" />
+                    </div>
+                    <h4 className="text-sm sm:text-md font-medium text-gray-600">Task</h4>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">{completedTask.length}</h1>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-500">Completed</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Total <span className="text-blue-500">{allTasks.length}</span> Task
+                  </p>
+                </motion.div>
+              </Link>
+            ) : userlogged?.role === 'Sub-Admin' ? (
+              <Link to="/subadmintasks">
+                <motion.div
+                  className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <FaTasks className="text-blue-500 text-base sm:text-xl" />
+                    </div>
+                    <h4 className="text-sm sm:text-md font-medium text-gray-600">Task</h4>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">{completedAssignedtask.length}</h1>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-500">Completed</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Total <span className="text-blue-500">{assignedTask.length}</span> Task
+                  </p>
+                </motion.div>
+              </Link>
+            ) : (
+              <Link to="/agenttasks">
+                <motion.div
+                  className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <FaTasks className="text-blue-500 text-base sm:text-xl" />
+                    </div>
+                    <h4 className="text-sm sm:text-md font-medium text-gray-600">Task</h4>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 sm:mt-4">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">{completedAssignedtask.length}</h1>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-500">Completed</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Total <span className="text-blue-500">{assignedTask.length}</span> Task
+                  </p>
+                </motion.div>
+              </Link>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
+              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
             >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <FaUser className="text-blue-500 text-base sm:text-xl" />
-                </div>
-                <h4 className="text-sm sm:text-md font-medium text-gray-600">
-                  FollowUps
-                </h4>
-              </div>
-              <div className="flex items-center gap-2 mt-3 sm:mt-4">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">
-                  {totalFollowups.length}
-                </h1>
-                <p className="text-xs sm:text-sm font-semibold text-gray-500">
-                  Open
-                </p>
+              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Weekly Leads</h4>
+              <div className="w-full h-auto">
+                <AreaChart data={weeklyLeadsData} />
               </div>
             </motion.div>
 
-            {/* Tasks Summary */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <FaTasks className="text-blue-500 text-base sm:text-xl" />
-                </div>
-                <h4 className="text-sm sm:text-md font-medium text-gray-600">
-                  Tasks
-                </h4>
-              </div>
-              <div className="flex items-center gap-2 mt-3 sm:mt-4">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">
-                  {completedTask.length}
-                </h1>
-                <p className="text-xs sm:text-sm font-semibold text-gray-500">
-                  Completed
-                </p>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Total{" "}
-                <span className="text-blue-500">
-                  {tasks?.task?.length || 0}
-                </span>{" "}
-                Tasks
-              </p>
-            </motion.div>
-
-            {/* Calls Summary (Placeholder) */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition duration-300 hover:-translate-y-2 flex flex-col justify-between"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-            >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <FaPhoneAlt className="text-blue-500 text-base sm:text-xl" />
-                </div>
-                <h4 className="text-sm sm:text-md font-medium text-gray-600">
-                  Calls
-                </h4>
-              </div>
-              <div className="flex items-center gap-2 mt-3 sm:mt-4">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black">
-                  0
-                </h1>
-                <p className="text-xs sm:text-sm font-semibold text-gray-500">
-                  Closed
-                </p>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            {/* <DailyLeadsOverviewChart startDate={startDateFilter} endDate={endDateFilter} /> */}
-
-            {/* Weekly Leads */}
             <motion.div
               className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                Weekly Leads
-              </h4>
-              <AreaChart startDate={startDateFilter} endDate={endDateFilter} />
+              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Monthly Leads</h4>
+              <div className="w-full h-auto">
+                <MonthlyLeadsChart data={monthlyLeadsData} type="monthly" />
+              </div>
             </motion.div>
 
-            {/* Monthly Leads */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                Monthly Leads
-              </h4>
-              <MonthlyLeadsChart type="monthly" startDate={startDateFilter} endDate={endDateFilter} />
-            </motion.div>
-
-            {/* Lead Source Chart */}
-            { (
+            {userlogged?.role === 'Admin' && !metadata && (
               <motion.div
                 className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.2 }}
               >
-                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                  Lead Source Chart
-                </h4>
-                <LeadSourceProgressChart startDate={startDateFilter} endDate={endDateFilter} />
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Lead Source Chart</h4>
+                <div className="w-full h-auto mt-30">
+                  <LeadSourceProgressChart data={leadSourceData} />
+                </div>
               </motion.div>
             )}
 
-            {/* Lead Status Chart */}
             <motion.div
               className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.2 }}
             >
-              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                Lead Status Chart
-              </h4>
-              <LeadStatusPieChart leads={leads?.leads} isLoading={leadsLoading} />
+              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Lead Status Chart</h4>
+              <div className="w-full h-auto">
+                <LeadStatusDonutChart data={leadStatusData} />
+              </div>
             </motion.div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
+import Stafflist from './pages/Stafflist';
 import Subadmincustomer from './pages/Subadmincustomer';
 import Subadminleads from './pages/Subadminleads';
 import Subadminfollowups from './pages/Subadminfollowups';
@@ -17,7 +18,6 @@ import PaymentAddModel from './components/payments/PaymentAddModel';
 import ProductPaymentDetails from './components/payments/ProductPaymentDetails';
 import PaymentReportSide from './pages/PaymentReportSide';
 import PaymentDetails from './components/payments/PaymentDetails.jsx';
-import Stafflist from './pages/Stafflist.jsx';
 
 
 
@@ -32,7 +32,7 @@ function App() {
       {/* Protected Routes */}
       <Route path='/admindashboard' element={<Protectedroute><Admindashboard /></Protectedroute>} />
       <Route path='/subadminhome' element={<Protectedroute><Admindashboard /></Protectedroute>} />
-      <Route path='/agents' element={<Protectedroute><Stafflist/></Protectedroute>} />
+      <Route path='/agents' element={<Protectedroute><Stafflist /></Protectedroute>} />
       <Route path='/staffs' element={<Protectedroute><Subadminstafflist /></Protectedroute>} />
       <Route path='/leads' element={<Protectedroute><Subadminleads /></Protectedroute>} />
       <Route path='/customers' element={<Protectedroute><Subadmincustomer /></Protectedroute>} />

@@ -1,328 +1,246 @@
-// import React, { useMemo } from "react";
-// import { useQuery } from "@tanstack/react-query";
-// import { Pie } from "react-chartjs-2";
-// import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-// import { listconvertedcustomers } from "../../services/customersRouter";
+import { useQuery } from '@tanstack/react-query';
+import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
+import { Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { listconvertedcustomers } from '../../services/customersRouter';
 
-// ChartJS.register(ArcElement, Tooltip, Legend);
-
-// export default function PaymentDonutChart({ startDate, endDate }) {
-//   // ✅ Fetch all converted customers (all pages)
-//   const { data, isLoading, error } = useQuery({
-//     queryKey: ["convertedCustomers", startDate, endDate],
-//     queryFn: async () => {
-//       let allData = [];
-//       let currentPage = 1;
-//       let totalPages = 1;
-
-//       while (currentPage <= totalPages) {
-//         const response = await listconvertedcustomers({ page: currentPage, startDate, endDate });
-//         allData = [...allData, ...(response.customers || [])];
-//         totalPages = response.totalPages || 1;
-//         currentPage += 1;
-//       }
-
-//       return {
-//         customers: allData,
-//         totalCustomers: allData.length,
-//       };
-//     },
-//     staleTime: 5 * 60 * 1000,
-//   });
-
-//   const customers = data?.customers || [];
-
-//   // ✅ Payment Status Count
-//   const paymentStatusCount = useMemo(() => {
-//     const counts = {};
-//     customers.forEach((c) => {
-//       const status = c.payment || "Unknown";
-//       counts[status] = (counts[status] || 0) + 1;
-//     });
-//     return counts;
-//   }, [customers]);
-
-//   const totalCustomers = data?.totalCustomers || 0;
-
-//   // ✅ Chart Data
-//   const chartData = useMemo(() => ({
-//     labels: Object.keys(paymentStatusCount),
-//     datasets: [
-//       {
-//         data: Object.values(paymentStatusCount),
-//         backgroundColor: [
-//           "#2563EB", // Blue
-//           "#F59E0B", // Amber
-//           "#10B981", // Green
-//           "#EF4444", // Red
-//           "#8B5CF6", // Purple
-//         ],
-//         borderColor: "#fff",
-//         borderWidth: 2,
-//         hoverOffset: 15,
-//       },
-//     ],
-//   }), [paymentStatusCount]);
-
-//   // ✅ Chart Options
-//   const options = useMemo(() => ({
-//     responsive: true,
-//     maintainAspectRatio: false,
-//     cutout: "35%", // donut size
-//     plugins: {
-//       legend: {
-//         position: "bottom",
-//         labels: {
-//           color: "#374151",
-//           font: { size: 14, family: "'Inter', sans-serif" },
-//           usePointStyle: true,
-//           pointStyle: "circle",
-//           padding: 16,
-//         },
-//       },
-//       tooltip: {
-//         callbacks: {
-//           label: (context) => {
-//             const label = context.label || "";
-//             const value = context.raw || 0;
-//             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-//             const percent = ((value / total) * 100).toFixed(1);
-//             return `${label}: ${value} (${percent}%)`;
-//           },
-//         },
-//       },
-//     },
-//   }), []);
-
-//   if (isLoading)
-//     return <p className="text-center text-gray-500 text-sm sm:text-base">Loading chart...</p>;
-//   if (error)
-//     return <p className="text-center text-red-500 text-sm sm:text-base">Error: {error.message}</p>;
-
-//   return (
-//     <div className="bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition-all duration-300">
-//       {/* Header */}
-//       <div className="flex flex-col items-center mb-6">
-//         <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
-//           Payment Status Distribution
-//         </h2>
-//         <p className="text-gray-500 text-sm">
-//           Total Customers:{" "}
-//           <span className="font-semibold text-gray-700">{totalCustomers}</span>
-//         </p>
-//       </div>
-
-//       {/* Chart + Status Summary */}
-//       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center">
-//         {/* Chart Section */}
-//         <div className="col-span-3 w-full h-[380px] sm:h-[420px] flex items-center justify-center">
-//           {Object.keys(paymentStatusCount).length > 0 ? (
-//             <Pie data={chartData} options={options} />
-//           ) : (
-//             <p className="text-gray-400 text-sm text-center">No payment data available</p>
-//           )}
-//         </div>
-
-//         {/* Status Summary Boxes */}
-//         <div className="col-span-2 flex flex-col gap-3">
-//           {Object.entries(paymentStatusCount).map(([status, count], index) => {
-//             const colors = ["#2563EB", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"];
-//             return (
-//               <div
-//                 key={status}
-//                 className="flex justify-between items-center text-white font-medium px-4 py-3 rounded-lg shadow-sm transition-transform duration-200 hover:scale-[1.03]"
-//                 style={{ backgroundColor: colors[index % colors.length] }}
-//               >
-//                 <span>{status}</span>
-//                 <span>{count}</span>
-//               </div>
-//             );
-//           })}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-import React, { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { listconvertedcustomers } from "../../services/customersRouter";
-import { FaCheckCircle, FaTimesCircle, FaHourglassHalf, FaCircle } from "react-icons/fa";
-
+// Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-export default function PaymentDonutChart({ startDate, endDate }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["convertedCustomers", startDate, endDate],
+// Example context (replace with your actual context)
+const SomeContext = React.createContext(null);
+
+// Error boundary component
+class ErrorBoundary extends React.Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div style={{ textAlign: 'center', color: 'red' }}>Something went wrong with the chart.</div>;
+    }
+    return this.props.children;
+  }
+}
+
+const PaymentDonutChart = () => {
+  // Hooks called at the top level (ensures consistent order)
+  const context1 = useContext(SomeContext);
+  const context2 = useContext(SomeContext);
+  const context3 = useContext(SomeContext);
+
+  const [chartState, setChartState] = useState({ isVisible: true });
+
+  const handleChartUpdate = useCallback(() => {
+    setChartState((prev) => ({ ...prev, isVisible: !prev.isVisible }));
+  }, []);
+
+  // useEffect(() => {
+  //   console.log('Chart state updated:', chartState);
+  // }, [chartState]);
+
+  const syncState = React.useSyncExternalStore(
+    (callback) => {
+      window.addEventListener('resize', callback);
+      return () => window.removeEventListener('resize', callback);
+    },
+    () => window.innerWidth
+  );
+
+  // Fetch all customers without pagination
+  const { data: allCustomers, isLoading, error } = useQuery({
+    queryKey: ['listCustomer', 'all'],
     queryFn: async () => {
       let allData = [];
       let currentPage = 1;
       let totalPages = 1;
 
       while (currentPage <= totalPages) {
-        const response = await listconvertedcustomers({ page: currentPage, startDate, endDate });
-        allData = [...allData, ...(response.customers || [])];
-        totalPages = response.totalPages || 1;
+        const response = await listconvertedcustomers({ page: currentPage });
+        allData = [...allData, ...response.customers];
+        totalPages = response.totalPages;
         currentPage += 1;
       }
 
-      return { customers: allData, totalCustomers: allData.length };
+      return {
+        customers: allData,
+        totalCustomers: allData.length,
+      };
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const customers = data?.customers || [];
-
-  // ✅ Filter customers by date range
-  const filteredCustomers = useMemo(() => {
-    if (!startDate || !endDate) return customers;
-    return customers.filter((customer) => {
-      if (!customer.createdAt) return false;
-      const customerDate = new Date(customer.createdAt);
-      return customerDate >= startDate && customerDate <= endDate;
-    });
-  }, [customers, startDate, endDate]);
-
-  // ✅ Payment Status Count
+  // Memoize payment status count
   const paymentStatusCount = useMemo(() => {
-    const counts = {};
-    filteredCustomers.forEach((c) => {
-      const status = c.payment || "Unknown";
-      counts[status] = (counts[status] || 0) + 1;
-    });
-    return counts;
-  }, [filteredCustomers]);
+    if (!allCustomers?.customers) return {};
+    return allCustomers.customers.reduce((acc, customer) => {
+      const status = customer.payment || 'Unknown';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+  }, [allCustomers]);
 
-  const totalCustomers = data?.totalCustomers || 0;
+  // Memoize total customers
+  const totalCustomers = useMemo(() => {
+    return allCustomers?.totalCustomers || allCustomers?.customers?.length || 0;
+  }, [allCustomers]);
 
-  // ✅ Chart Data
-  const chartData = useMemo(
-    () => ({
-      labels: Object.keys(paymentStatusCount),
-      datasets: [
-        {
-          data: Object.values(paymentStatusCount),
-          backgroundColor: [
-            "#2563EB", // Blue
-            "#F59E0B", // Amber
-            "#10B981", // Green
-            "#EF4444", // Red
-            "#8B5CF6", // Purple
-          ],
-          borderColor: "#fff",
-          borderWidth: 3,
-          hoverOffset: 20,
+  // Memoize chart data
+  const chartData = useMemo(() => ({
+    labels: Object.keys(paymentStatusCount),
+    datasets: [
+      {
+        data: Object.values(paymentStatusCount),
+        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+        hoverOffset: 20,
+      },
+    ],
+  }), [paymentStatusCount]);
+
+  // Memoize chart options
+  const options = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          font: { size: 14, family: 'Arial, sans-serif' },
+          color: '#333',
         },
-      ],
-    }),
-    [paymentStatusCount]
-  );
-
-  // ✅ Chart Options
-  const options = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: "55%", // modern balanced donut
-      plugins: {
-        legend: {
-          display: false, // Hide default legend for custom summary
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              const label = context.label || "";
-              const value = context.raw || 0;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percent = ((value / total) * 100).toFixed(1);
-              return `${label}: ${value} (${percent}%)`;
-            },
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: ${value} (${percentage}%)`;
           },
         },
       },
-    }),
-    []
-  );
+    },
+    animation: false,
+  }), []);
 
-  if (isLoading)
-    return (
-      <div className="flex justify-center items-center h-[300px] text-gray-500">
-        Loading chart...
-      </div>
-    );
+  // Early returns after all hooks
+  if (isLoading) return <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>Loading...</div>;
+  if (error) return <div style={{ textAlign: 'center', color: 'red', fontSize: '1.2rem' }}>Error: {error.message}</div>;
 
-  if (error)
-    return (
-      <div className="flex justify-center items-center h-[300px] text-red-500">
-        Error loading chart
-      </div>
-    );
-  const statusIcons = {
-    paid: <FaCheckCircle className="text-green-300" />,
-    "partially paid": <FaHourglassHalf className="text-yellow-300" />,
-    pending: <FaTimesCircle className="text-red-300" />,
-    Unknown: <FaCircle className="text-gray-300" />,
-  };
-  const colors = ["#2563EB", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"];
+  // Render the chart, status counts, and total customers
   return (
-    <div className="bg-gradient-to-br  from-white via-gray-50 to-gray-100 rounded-3xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white/60 backdrop-blur-sm flex flex-col items-center">
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-1">
-          💰 Payment Status Distribution
+    <ErrorBoundary>
+      <div
+        style={{
+          margin: '2rem auto',
+          padding: '1.5rem',
+          maxWidth: '1000px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: '1.8rem',
+            fontWeight: '600',
+            color: '#1f2937',
+            textAlign: 'center',
+            marginBottom: '1.5rem',
+          }}
+        >
+          Payment Status Distribution
         </h2>
-        <p className="text-gray-500 text-sm">
-          Total Customers:{" "}
-          <span className="font-semibold text-gray-800">{totalCustomers}</span>
-        </p>
-      </div>
-
-      {/* Chart + Summary Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 items-center gap-6 px-6 py-6">
-        {/* Chart Section */}
-        <div className="col-span-3 flex items-center justify-center h-[320px] sm:h-[380px] md:h-[400px]">
-          {Object.keys(paymentStatusCount).length > 0 ? (
-            <Pie data={chartData} options={options} />
-          ) : (
-            <p className="text-gray-400 text-sm">No payment data available</p>
-          )}
+        <div
+          style={{
+            backgroundColor: 'white',
+            padding: '1rem',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+            marginBottom: '1.5rem',
+            textAlign: 'center',
+            fontSize: '1.2rem',
+            fontWeight: '500',
+            color: '#374151',
+          }}
+        >
+          Total Customers: {totalCustomers}
         </div>
-
-        {/* Status Summary */}
-        <div className="col-span-2 flex flex-col gap-4">
-          {Object.entries(paymentStatusCount).map(([status, count], index) => {
-            const color = colors[index % colors.length];
-            const icon =
-              statusIcons[status.toLowerCase()] || (
-                <FaCircle className="text-gray-300" />
-              );
-
-            return (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '2rem',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+          }}
+        >
+          {/* Pie Chart */}
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '',
+              height: '400px',
+              backgroundColor: 'white',
+              padding: '1rem',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+            }}
+          >
+            {Object.keys(paymentStatusCount).length > 0 ? (
+              <Pie data={chartData} options={options} />
+            ) : (
+              <div style={{ textAlign: 'center', color: '#6b7280' }}>No payment data available</div>
+            )}
+          </div>
+          {/* Status Count Boxes */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '1rem',
+              width: '100%',
+              maxWidth: '400px',
+            }}
+          >
+            {Object.entries(paymentStatusCount).map(([status, count], index) => (
               <div
                 key={status}
-                className="flex justify-between items-center bg-white/80 shadow-sm hover:shadow-md border border-gray-100 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-[1.02]"
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'][index % 5],
+                  color: '#fff',
+                  textAlign: 'center',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                }}
               >
-                <div className="flex items-center gap-2 text-gray-800 font-semibold">
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: color }}
-                  ></span>
-                  {icon}
-                  <span className="capitalize">{status}</span>
-                </div>
-                <span className="text-gray-700 font-bold">{count}</span>
+                <strong>{status}</strong>: {count}
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
+        {/* Example: Use other hooks' data */}
+ 
       </div>
-
-      {/* Footer */}
-      <div className="bg-gray-50 border-t border-gray-200 text-center py-2 text-xs text-gray-500">
-        Updated based on current payment records
-      </div>
-    </div>
+    </ErrorBoundary>
   );
-}
+};
+
+export default React.memo(PaymentDonutChart);

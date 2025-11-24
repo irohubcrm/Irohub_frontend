@@ -11,17 +11,15 @@ function Uploadcsvmodal() {
     const [csvFile, setCsvFile] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [showsuccess, setshowsuccess] = useState(false);
-    const [uploadedLeads, setUploadedLeads] = useState([]);
     const dispatch = useDispatch();
     const queryclient = useQueryClient();
 
     const uploadingcsv = useMutation({
         mutationKey: ['Uploading CSV'],
         mutationFn: uploadbulkleads,
-        onSuccess: (data) => {
-            queryclient.invalidateQueries(['List leads']);
+        onSuccess: () => {
+            queryclient.invalidateQueries(['Listleads']);
             setCsvFile(null);
-            setUploadedLeads(data?.data || []);
         },
         onError: (error) => {
             setErrorMessage(error?.response?.data?.message || "Upload failed. Please try again.");
@@ -52,34 +50,7 @@ function Uploadcsvmodal() {
         setTimeout(() => {
             setshowsuccess(false)
             dispatch(toggleUploadcsvmodal());
-        }, 5000);
-    };
-
-    const handleDownload = () => {
-        if (uploadedLeads.length === 0) {
-            return;
-        }
-
-        const headers = Object.keys(uploadedLeads[0]);
-        const csvContent = [
-            headers.join(','),
-            ...uploadedLeads.map(lead => 
-                headers.map(header => 
-                    `"${lead[header] || ''}"`
-                ).join(',')
-            )
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        if (link.href) {
-            URL.revokeObjectURL(link.href);
-        }
-        link.href = URL.createObjectURL(blob);
-        link.setAttribute('download', 'uploaded_leads.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        }, 2000);
     };
 
     return (
@@ -170,21 +141,13 @@ function Uploadcsvmodal() {
                     >
                         <motion.div className="absolute inset-0 bg-black opacity-30" />
                         <motion.div
-                            className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[150px] sm:h-[170px] flex flex-col items-center justify-center text-center"
+                            className="relative z-10 bg-green-200 text-green-800 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm h-[100px] sm:h-[120px] flex items-center justify-center text-center"
                             initial={{ scale: 0.5 }}
                             animate={{ scale: 1 }}
                             exit={{ scale: 0.5 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                         >
-                            <p>
                             ✅ Leads added successfully!
-                            </p>
-                            <button
-                                onClick={handleDownload}
-                                className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md transition"
-                            >
-                                Download Uploaded Leads
-                            </button>
                         </motion.div>
                     </motion.div>
                 )}

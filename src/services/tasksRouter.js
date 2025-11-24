@@ -7,13 +7,10 @@ export const addtasks = async (taskdata) => {
     return data
 }
 
-export const listtask = async (startDate, endDate) => {
-    const params = new URLSearchParams();
-    if (startDate) params.append("startDate", startDate);
-    if (endDate) params.append("endDate", endDate);
-    const { data } = await axios.get(`${API_URL}/tasks/list?${params.toString()}`, getAuthorized());
-    return data;
-};
+export const listtask = async () => {
+    const { data } = await axios.get(`${API_URL}/tasks/list`, getAuthorized())
+    return data
+}
 
 export const listsubadmintask = async () => {
     const { data } = await axios.get(`${API_URL}/tasks/list-subadmintask`, getAuthorized())

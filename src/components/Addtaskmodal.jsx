@@ -35,7 +35,7 @@ function Addtaskmodal() {
     name: Yup.string().required("Task name is required"),
     assignedTo: Yup.string().required("You need to assign task to a staff"),
     deadline: Yup.date().min(new Date(new Date().setHours(0, 0, 0, 0)), "Deadline cannot be in the past"),
-    description: Yup.string().required("Enter the description")
+    description: Yup.string()
   })
 
   const addtaskForm = useFormik({
