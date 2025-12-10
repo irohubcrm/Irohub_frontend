@@ -29,3 +29,8 @@ export const updatetaskstatus = async ({ taskId, status }) => {
     const { data } = await axios.put(`${API_URL}/tasks/update-status/${taskId}`, { status }, getAuthorized())
     return data
 }
+
+export const deletetask = async (taskId) => {
+    const { data } = await axios.delete(`${API_URL}/tasks/delete/${taskId}`, getAuthorized())
+    return data
+}

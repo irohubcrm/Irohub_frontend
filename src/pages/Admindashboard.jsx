@@ -2,21 +2,16 @@ import React, { useState, useEffect, useMemo } from "react";
 import Sidebar from "./Sidebar";
 import AreaChart from "../components/Areachart";
 import MonthlyLeadsChart from "../components/BarChart";
-import DailyLeadsOverviewChart from "../components/DailyLeadsOverviewChart";
 import LeadSourceProgressChart from "../components/LeadSourceChart";
 import LeadStatusPieChart from "../components/PieChart";
-import LeadStatusDonutChart from "../components/DonutChart";
-
 import Spinner from "../components/Spinner";
 import Icons from "./Icons";
 import { motion } from "framer-motion";
 import { FaBars, FaChartBar, FaPhoneAlt, FaTasks, FaUser } from "react-icons/fa";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { listleads } from "../services/leadsRouter";
 import DateRangeDropdown from "../components/DateRangeDropdown";
-import moment from "moment";
 import { listtask } from "../services/tasksRouter";
 
 function Admindashboard() {
@@ -70,7 +65,7 @@ function Admindashboard() {
   }
 
   // ==============================
-  // Derived Values (Optimized)
+  // Derived Values
   // ==============================
   const totalFollowups = useMemo(
     () =>
@@ -149,25 +144,19 @@ function Admindashboard() {
         {isDataLoading && <Spinner />}
 
         {/* Header */}
-        <div className="relative flex justify-between items-start">
-          <div className="p-4 sm:p-6 lg:p-8 bg-gray-100 border-b border-gray-300">
-            <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center">
-              <button
-                className="mr-2 sm:mr-4 text-blue-600 hover:text-blue-800 transition"
-                onClick={() => setSidebarVisible(!sidebarVisible)}
-              >
-                <FaBars className="text-lg sm:text-xl lg:text-2xl" />
-              </button>
+        <div className="flex items-center justify-between p-4 sm:p-6 lg:p-8 bg-gray-100 border-b border-gray-300">
+          <div className="flex items-center">
+            <button
+              className="mr-2 sm:mr-4 text-blue-600 hover:text-blue-800 transition"
+              onClick={() => setSidebarVisible(!sidebarVisible)}
+            >
+              <FaBars className="text-lg sm:text-xl lg:text-2xl" />
+            </button>
+            <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
               Dashboard
             </h3>
           </div>
-          <div className="flex items-center gap-2 mt-4 absolute top-4 sm:top-6 right-4 sm:right-6 z-50">
-            <DateRangeDropdown onDateRangeChange={(start, end) => {
-              setStartDateFilter(start);
-              setEndDateFilter(end);
-            }} />
-            <Icons />
-          </div>
+          <Icons />
         </div>
 
         {/* Body */}
@@ -289,63 +278,89 @@ function Admindashboard() {
             </motion.div>
           </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            {/* <DailyLeadsOverviewChart startDate={startDateFilter} endDate={endDateFilter} /> */}
-
-            {/* Weekly Leads */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                Weekly Leads
+          {/* Charts Wrapper with Date Range on Top */}
+          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
+            {/* Top bar inside charts section */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+              <h4 className="text-lg sm:text-xl font-semibold text-gray-800">
+                Leads & Tasks Overview
               </h4>
-              <AreaChart startDate={startDateFilter} endDate={endDateFilter} />
-            </motion.div>
+              <DateRangeDropdown
+                onDateRangeChange={(start, end) => {
+                  setStartDateFilter(start);
+                  setEndDateFilter(end);
+                }}
+              />
+            </div>
 
-            {/* Monthly Leads */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                Monthly Leads
-              </h4>
-              <MonthlyLeadsChart type="monthly" startDate={startDateFilter} endDate={endDateFilter} />
-            </motion.div>
-
-            {/* Lead Source Chart */}
-            { (
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+              {/* Weekly Leads */}
               <motion.div
-                className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
+                className="bg-gray-50 p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden min-h-[220px]"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.2 }}
+                transition={{ duration: 0.4 }}
+              >
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
+                  Weekly Leads
+                </h4>
+                <AreaChart
+                  startDate={startDateFilter}
+                  endDate={endDateFilter}
+                />
+              </motion.div>
+
+              {/* Monthly Leads */}
+              <motion.div
+                className="bg-gray-50 p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden min-h-[220px]"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
+                  Monthly Leads
+                </h4>
+                <MonthlyLeadsChart
+                  type="monthly"
+                  startDate={startDateFilter}
+                  endDate={endDateFilter}
+                />
+              </motion.div>
+
+              {/* Lead Source Chart */}
+              <motion.div
+                className="bg-gray-50 p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden min-h-[220px]"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
               >
                 <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
                   Lead Source Chart
                 </h4>
-                <LeadSourceProgressChart startDate={startDateFilter} endDate={endDateFilter} />
+                <LeadSourceProgressChart
+                  leads={leads?.leads}
+                  startDate={startDateFilter}
+                  endDate={endDateFilter}
+                />
               </motion.div>
-            )}
 
-            {/* Lead Status Chart */}
-            <motion.div
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden min-h-[200px]"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
-                Lead Status Chart
-              </h4>
-              <LeadStatusPieChart leads={leads?.leads} isLoading={leadsLoading} />
-            </motion.div>
+              {/* Lead Status Chart */}
+              <motion.div
+                className="bg-gray-50 p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden min-h-[220px]"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
+                  Lead Status Chart
+                </h4>
+                <LeadStatusPieChart
+                  leads={leads?.leads}
+                  isLoading={leadsLoading}
+                />
+              </motion.div>
+            </div>
           </div>
         </div>
       </motion.div>

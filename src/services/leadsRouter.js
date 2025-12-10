@@ -21,8 +21,13 @@ export const listleads = async (options) => {
     params.append("noLimit", "true");
   } else {
     params.append("limit", limit); // Add limit if noLimit is false
-  }  if (priority && priority !== "Priority") params.append("priority", priority);
-  if (status && status !== "Status") params.append("status", status); // ← filtering
+  }
+  if (priority && priority !== "Priority") params.append("priority", priority);
+  if (status && Array.isArray(status) && status.length > 0) {
+    status.forEach(s => params.append("status", s));
+  } else if (status && status !== "Status") {
+    params.append("status", status);
+  }
   if (filterleads && filterleads !== "All") params.append("filterleads", filterleads);
   if (assignedTo && assignedTo !== "AssignedTo") params.append("assignedTo", assignedTo);
   if (searchText) params.append("searchText", searchText);

@@ -246,85 +246,76 @@ function Subadminreports() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <div className="flex justify-between items-center mb-4 border-b pb-2">
-                  <h4 className="text-lg sm:text-xl font-semibold text-gray-800">
-                    Leads {startDate && endDate ? `from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}` : 'for selected date range'}
-                  </h4>
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, or mobile..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                  />
-                </div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b">
+  <h4 className="text-lg sm:text-xl font-bold text-gray-800">
+    Leads
+    {startDate && endDate ? (
+      <span className="text-blue-600 font-medium">
+        {' '}from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}
+      </span>
+    ) : (
+      <span className="text-gray-500 italic"> (All Time)</span>
+    )}
+  </h4>
+
+  <input
+    type="text"
+    placeholder="Search by name, email, mobile or source..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="w-full sm:w-96 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm"
+  />
+</div>
 
                 {(isLoading || isFetchingAll) ? (
                   <Spinner />
                 ) : isError ? (
                   <p className="text-red-500 text-sm sm:text-base">Error loading leads data.</p>
                 ) : filteredLeads.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <div className="max-h-[400px] overflow-y-auto">
-                      <table className="min-w-full table-auto text-xs sm:text-sm">
-                        <thead className="bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white font-semibold sticky top-0 z-10">
-                          <tr>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Name</th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Email</th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Phone</th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Status</th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Created</th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Source</th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Assigned To</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-gray-800">
-                          {filteredLeads.map((lead, index) => (
-                            <tr
-                              key={index}
-                              className="hover:bg-gray-50 transition border-b border-gray-200"
-                            >
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{lead.name || 'N/A'}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 truncate">{lead.email || 'N/A'}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3">{lead.mobile || 'N/A'}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize">
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                    lead.status === 'converted'
-                                      ? 'bg-green-100 text-green-700'
-                                      : lead.status === 'open'
-                                      ? 'bg-yellow-100 text-yellow-700'
-                                      : lead.status === 'rejected'
-                                      ? 'bg-red-100 text-red-700'
-                                      : lead.status === 'closed'
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                  }`}
-                                >
-                                  {lead.status || 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3">
-                                {lead.createdAt
-                                  ? new Date(lead.createdAt).toLocaleDateString('en-US', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
-                                  : 'N/A'}
-                              </td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize truncate">
-                                {lead?.source?.title || 'N/A'}
-                              </td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 capitalize truncate">
-                                {lead?.assignedTo?.name || 'N/A'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+            <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+  <div className="max-h-[520px] overflow-y-auto overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white sticky top-0 z-10">
+        <tr>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Email</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Phone</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Created</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Source</th>
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Assigned To</th>
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-100 text-gray-800">
+        {filteredLeads.map((lead, index) => (
+          <tr key={index} className="hover:bg-gray-50 transition">
+            <td className="px-4 py-3 text-sm">{lead.name || '—'}</td>
+            <td className="px-4 py-3 text-sm truncate max-w-[200px]" title={lead.email || 'No email'}>
+              {lead.email ? lead.email : <span className="text-gray-400 italic">No email</span>}
+            </td>
+            <td className="px-4 py-3 text-sm">{lead.mobile || '—'}</td>
+            <td className="px-4 py-3">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                lead.status === 'converted' ? 'bg-green-100 text-green-800' :
+                lead.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                lead.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                lead.status === 'closed' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {lead.status || 'unknown'}
+              </span>
+            </td>
+            <td className="px-4 py-3 text-sm">
+              {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}
+            </td>
+            <td className="px-4 py-3 text-sm capitalize">{lead?.source?.title || '—'}</td>
+            <td className="px-4 py-3 text-sm">{lead?.assignedTo?.name || 'Unassigned'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
                 ) : (
                   <p className="text-gray-500 text-sm sm:text-base">No leads found for the selected date range.</p>
                 )}

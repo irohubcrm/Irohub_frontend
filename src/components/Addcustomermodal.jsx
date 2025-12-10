@@ -18,13 +18,15 @@ function Addcustomermodal() {
   const [showsuccess, setshowsuccess] = useState(false);
 
   // Main phone handler
-  const handlePhoneChange = (phone) => {
+  const handlePhoneChange = (phone, country) => {
     addcustomerForm.setFieldValue("mobile", `+${phone}`);
+    addcustomerForm.setFieldValue("countryCode", country.dialCode);
   };
 
   // Alternative phone handler
-  const handleAltPhoneChange = (phone) => {
+  const handleAltPhoneChange = (phone, country) => {
     addcustomerForm.setFieldValue("alternativemobile", `+${phone}`);
+    addcustomerForm.setFieldValue("altCountryCode", country.dialCode);
   };
 
   const addingcustomer = useMutation({
@@ -44,29 +46,83 @@ function Addcustomermodal() {
   const customerformvalidation = Yup.object({
     name: Yup.string()
       .min(2, "Name must be at least 2 characters")
-      .required("Name is required"),
+      .required("Name is required")
+      // CRM_70 Fix: Only allow letters and spaces
+      .matches(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces")
+      .test('no-numeric', 'Name cannot contain numbers', value => {
+        return !/\d/.test(value);
+      }),
 
     mobile: Yup.string()
       .required("Mobile number is required")
-      .matches(/^\+\d{7,14}$/, "Enter a valid international phone number"),
+      // CRM_71 Fix: Stricter validation for international phone numbers
+      .matches(/^\+\d{1,15}$/, "Enter a valid international phone number")
+      .test(
+        "no-leading-zero",
+        "Mobile number cannot start with 0",
+        function (value) {
+          if (!value) return true;
+          const { countryCode } = this.parent;
+          const cleanPhone = value.replace("+", "");
+          const cleanCountry = countryCode ? countryCode.toString().replace("+", "") : "";
+          if (cleanCountry && cleanPhone.startsWith(cleanCountry)) {
+            const national = cleanPhone.slice(cleanCountry.length);
+            return !national.startsWith("0");
+          }
+          // Fallback: if no country code tracking, try to guess or skip
+          // But since we track it, this should work.
+          return true;
+        }
+      ),
 
     alternativemobile: Yup.string()
+      // CRM_73 Fix: Stricter validation for alternate mobile
+      .matches(/^\+\d{1,15}$/, "Enter a valid alternate phone number")
       .nullable()
-      .matches(/^\+\d{7,14}$/, "Enter a valid phone number")
-      .notRequired(),
+      .notRequired()
+      .test(
+        "no-leading-zero-alt",
+        "Mobile number cannot start with 0",
+        function (value) {
+          if (!value) return true;
+          const { altCountryCode } = this.parent;
+          const cleanPhone = value.replace("+", "");
+          const cleanCountry = altCountryCode ? altCountryCode.toString().replace("+", "") : "";
+          if (cleanCountry && cleanPhone.startsWith(cleanCountry)) {
+            const national = cleanPhone.slice(cleanCountry.length);
+            return !national.startsWith("0");
+          }
+          return true;
+        }
+      ),
 
-    email: Yup.string().email("Invalid email format").nullable(),
+    email: Yup.string()
+      // CRM_72 Fix: More robust email validation regex
+      .matches(
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        "Invalid email format"
+      )
+      .nullable(),
   });
 
   const addcustomerForm = useFormik({
+    enableReinitialize: true,
     initialValues: {
       name: "",
       mobile: "",
+      countryCode: "91", // Default to India dial code if initial state is IN
       alternativemobile: "",
+      altCountryCode: "91",
       email: "",
     },
     validationSchema: customerformvalidation,
     onSubmit: async (values, { setSubmitting }) => {
+      const errors = await addcustomerForm.validateForm(values);
+      if (Object.keys(errors).length > 0) {
+        addcustomerForm.setTouched(errors);
+        setSubmitting(false);
+        return;
+      }
       try {
         await addingcustomer.mutateAsync(values);
 

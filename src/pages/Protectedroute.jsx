@@ -1,6 +1,6 @@
-// src/components/ProtectedRoute.jsx
 import { useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
+import NotificationManager from '../components/NotificationManager'
 
 const ProtectedRoute = ({ children }) => {
   const user = useSelector(state => state.auth.user)
@@ -9,7 +9,12 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/" />
   }
 
-  return children
+  return (
+    <>
+      <NotificationManager />
+      {children}
+    </>
+  )
 }
 
 export default ProtectedRoute

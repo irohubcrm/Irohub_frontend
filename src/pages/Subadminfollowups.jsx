@@ -44,16 +44,44 @@ function Subadminfollowups() {
   const [assignedfilter, setassignedfilter] = useState("AssignedTo");
   const [leadvaluefilter, setleadvaluefilter] = useState("Sort By");
   const [datefilter, setdatefilter] = useState("Date");
+
+  // Custom date input value (dd-mm-yyyy as string)
+  const [customDateInput, setCustomDateInput] = useState("");
+  const [dateRangeStartInput, setDateRangeStartInput] = useState("");
+  const [dateRangeEndInput, setDateRangeEndInput] = useState("");
+
+  // Actual Date objects for API
   const [selectdatefilter, setselectdatefilter] = useState(null);
   const [daterangefilter, setdaterangefilter] = useState({
     start: null,
     end: null,
   });
+
   const [searchText, setsearchText] = useState("");
   const [currentpage, setcurrentpage] = useState(1);
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const leadsperpage = 10;
+
+  // Auto-format dd-mm-yyyy
+  const formatDateInput = (value) => {
+    const digits = value.replace(/\D/g, "");
+    let formatted = "";
+    if (digits.length > 0) formatted += digits.slice(0, 2);
+    if (digits.length >= 3) formatted += "-" + digits.slice(2, 4);
+    if (digits.length >= 5) formatted += "-" + digits.slice(4, 8);
+    return formatted.slice(0, 10);
+  };
+
+  // Validate and convert dd-mm-yyyy to Date
+  const parseDateString = (str) => {
+    if (!str || str.length !== 10) return null;
+    const [dd, mm, yyyy] = str.split("-").map(Number);
+    const date = new Date(yyyy, mm - 1, dd);
+    return date.getDate() === dd && date.getMonth() === mm - 1 && date.getFullYear() === yyyy
+      ? date
+      : null;
+  };
 
   const { data: fetchopencustomers, isLoading } = useQuery({
     queryKey: [
@@ -96,7 +124,6 @@ function Subadminfollowups() {
     queryFn: liststaffs,
   });
 
-  
   const updatingpriority = useMutation({
     mutationKey: ["Updatepriority"],
     mutationFn: updatepriority,
@@ -105,7 +132,6 @@ function Subadminfollowups() {
     },
   });
 
-
   const updatingleadstatus = useMutation({
     mutationKey: ["Updateleadstatus"],
     mutationFn: updateleadstatus,
@@ -113,8 +139,6 @@ function Subadminfollowups() {
       queryclient.invalidateQueries(["Opencustomers"]);
     },
   });
-  
-
 
   const deleteLeadsMutation = useMutation({
     mutationKey: ["Delete leads"],
@@ -123,55 +147,37 @@ function Subadminfollowups() {
       queryclient.invalidateQueries(["Opencustomers"]);
       setSelectedLeads([]);
       setstatussuccessmodal(true);
-      setTimeout(() => {
-        setstatussuccessmodal(false);
-      }, 2000);
+      setTimeout(() => setstatussuccessmodal(false), 2000);
     },
     onError: (error) => {
-      console.error("Delete leads error:", error);
-      alert(
-        "Failed to delete leads: " +
-          (error.response?.data?.message || error.message)
-      );
+      alert("Failed to delete leads: " + (error.response?.data?.message || error.message));
     },
   });
 
   const handleleadchange = async (leadId, status) => {
     await updatingleadstatus.mutateAsync({ leadId, status });
     setstatussuccessmodal(true);
-    setTimeout(() => {
-      setstatussuccessmodal(false);
-    }, 2000);
+    setTimeout(() => setstatussuccessmodal(false), 2000);
   };
 
   const handlepriority = async (customerId, priority) => {
     await updatingpriority.mutateAsync({ customerId, priority });
     setstatussuccessmodal(true);
-    setTimeout(() => {
-      setstatussuccessmodal(false);
-    }, 2000);
+    setTimeout(() => setstatussuccessmodal(false), 2000);
   };
 
   const handleSelectLead = (leadId) => {
     setSelectedLeads((prev) =>
-      prev.includes(leadId)
-        ? prev.filter((id) => id !== leadId)
-        : [...prev, leadId]
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
     );
   };
 
   const handleDeleteSelected = () => {
-    if (selectedLeads.length > 0) {
-      setShowDeleteConfirm(true);
-    }
+    if (selectedLeads.length > 0) setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
     await deleteLeadsMutation.mutateAsync({ leadIds: selectedLeads });
-    setShowDeleteConfirm(false);
-  };
-
-  const closeDeleteConfirm = () => {
     setShowDeleteConfirm(false);
   };
 
@@ -181,7 +187,7 @@ function Subadminfollowups() {
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setcurrentpage(page);
-      setSelectedLeads([]); // Clear selections when changing pages
+      setSelectedLeads([]);
     }
   };
 
@@ -206,6 +212,7 @@ function Subadminfollowups() {
         {updatingleadstatus.isPending && <Spinner />}
         {updatingpriority.isPending && <Spinner />}
         {deleteLeadsMutation.isPending && <Spinner />}
+
         <div className="flex flex-col min-h-screen">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 sm:p-3 bg-white shadow sticky top-0 z-30 border-b">
@@ -228,16 +235,10 @@ function Subadminfollowups() {
           <div className="flex justify-between items-center p-3">
             {/* Left side: Filters */}
             <div className="flex flex-wrap gap-3">
-
-
-
-
-
-              {/* priority set */}
               <select
                 value={priorityfilter}
                 onChange={(e) => setpriorityfilter(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base transition duration-200 hover:border-blue-400"
+                className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option>Priority</option>
                 <option value="hot">Hot</option>
@@ -245,11 +246,12 @@ function Subadminfollowups() {
                 <option value="cold">Cold</option>
                 <option value="Not Assigned">Not Assigned</option>
               </select>
+
               {role === "Admin" && (
                 <select
                   value={assignedfilter}
                   onChange={(e) => setassignedfilter(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base transition duration-200 hover:border-blue-400"
+                  className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="AssignedTo">Assigned To</option>
                   {fetchstaffs?.data?.map((staff) => (
@@ -259,19 +261,28 @@ function Subadminfollowups() {
                   ))}
                 </select>
               )}
+
               <select
                 value={leadvaluefilter}
                 onChange={(e) => setleadvaluefilter(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base transition duration-200 hover:border-blue-400"
+                className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="Sort By">Lead Value</option>
                 <option value="ascleadvalue">Lead Value ↑</option>
                 <option value="descleadvalue">Lead Value ↓</option>
               </select>
+
               <select
                 value={datefilter}
-                onChange={(e) => setdatefilter(e.target.value)}
-                className="min-w-[140px] px-4 py-2 rounded-lg border border-gray-300 text-gray-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all hover:border-blue-400"
+                onChange={(e) => {
+                  setdatefilter(e.target.value);
+                  setCustomDateInput("");
+                  setDateRangeStartInput("");
+                  setDateRangeEndInput("");
+                  setselectdatefilter(null);
+                  setdaterangefilter({ start: null, end: null });
+                }}
+                className="min-w-[140px] px-4 py-2 rounded-lg border border-gray-300 text-gray-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               >
                 <option value="Date">Date</option>
                 <option value="today">Today</option>
@@ -279,42 +290,57 @@ function Subadminfollowups() {
                 <option value="custom">Search from date</option>
                 <option value="range">Search from range of date</option>
               </select>
+
+              {/* Custom Single Date */}
               {datefilter === "custom" && (
                 <input
-                  type="date"
-                  onChange={(e) =>
-                    setselectdatefilter(new Date(e.target.value))
-                  }
-                  className="px-4 py-2 rounded-lg border border-gray-300"
+                  type="text"
+                  value={customDateInput}
+                  placeholder="dd-mm-yyyy"
+                  maxLength="10"
+                  onChange={(e) => {
+                    const formatted = formatDateInput(e.target.value);
+                    setCustomDateInput(formatted);
+                    setselectdatefilter(parseDateString(formatted));
+                  }}
+                  className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none w-40 text-sm"
                 />
               )}
+
+              {/* Date Range */}
               {datefilter === "range" && (
                 <div className="flex gap-2">
                   <input
-                    type="date"
-                    onChange={(e) =>
-                      setdaterangefilter({
-                        ...daterangefilter,
-                        start: new Date(e.target.value),
-                      })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300"
+                    type="text"
+                    value={dateRangeStartInput}
+                    placeholder="Start: dd-mm-yyyy"
+                    maxLength="10"
+                    onChange={(e) => {
+                      const formatted = formatDateInput(e.target.value);
+                      setDateRangeStartInput(formatted);
+                      const date = parseDateString(formatted);
+                      setdaterangefilter((prev) => ({ ...prev, start: date }));
+                    }}
+                    className="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm w-40"
                   />
                   <input
-                    type="date"
-                    onChange={(e) =>
-                      setdaterangefilter({
-                        ...daterangefilter,
-                        end: new Date(e.target.value),
-                      })
-                    }
-                    className="px-4 py-2 rounded-lg border border-gray-300"
+                    type="text"
+                    value={dateRangeEndInput}
+                    placeholder="End: dd-mm-yyyy"
+                    maxLength="10"
+                    onChange={(e) => {
+                      const formatted = formatDateInput(e.target.value);
+                      setDateRangeEndInput(formatted);
+                      const date = parseDateString(formatted);
+                      setdaterangefilter((prev) => ({ ...prev, end: date }));
+                    }}
+                    className="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm w-40"
                   />
                 </div>
               )}
             </div>
 
-            {/* Right side: Search */}
+            {/* Search */}
             <div className="flex items-center gap-2">
               <AnimatePresence>
                 {showsearch && (
@@ -323,17 +349,16 @@ function Subadminfollowups() {
                     type="text"
                     value={searchText}
                     onChange={(e) => setsearchText(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 font-medium bg-white focus:ring-2 focus:ring-blue-500 text-sm sm:text-base w-40 sm:w-56"
+                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 font-medium bg-white focus:ring-2 focus:ring-blue-500 text-sm w-56"
                     placeholder="Search..."
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
                     exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.3 }}
                   />
                 )}
               </AnimatePresence>
               <button
-                className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+                className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700"
                 onClick={() => setshowsearch(!showsearch)}
               >
                 <FaSearch />
@@ -341,183 +366,123 @@ function Subadminfollowups() {
             </div>
           </div>
 
-          {/* Table Content */}
-          <div className="flex-grow p-2 sm:p-2 bg-gray-100">
-            <div className="flex justify-end mb-4 gap-2">
+          {/* Table & Pagination */}
+          <div className="flex-grow p-2 bg-gray-100">
+            <div className="flex justify-end mb-4">
               {selectedLeads.length > 0 && role !== "Agent" && (
                 <motion.button
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
                   onClick={handleDeleteSelected}
-                  className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-shadow shadow-md"
+                  className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow-md"
                 >
                   <Trash2 size={18} />
-                  Delete Selected
+                  Delete Selected ({selectedLeads.length})
                 </motion.button>
               )}
             </div>
+
+            {/* Table content remains same */}
             {isLoading ? (
               <Spinner />
             ) : fetchopencustomers?.leads?.length > 0 ? (
               <>
-                <div className="overflow-x-auto w-full bg-white p-3 sm:p-4 rounded-xl shadow-lg">
-                  <div className="max-h-[70vh] sm:max-h-[75vh] overflow-y-auto">
-                    <table className="w-full table-auto border-collapse text-xs sm:text-sm min-w-[800px]">
-                      <thead className="sticky top-0 bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white text-xs sm:text-sm uppercase z-10">
+                <div className="overflow-x-auto bg-white p-4 rounded-xl shadow-lg">
+                  <div className="max-h-[75vh] overflow-y-auto">
+                    <table className="w-full table-auto text-xs sm:text-sm min-w-[800px]">
+                      <thead className="sticky top-0 bg-gradient-to-r from-[#00B5A6] to-[#1E6DB0] text-white uppercase">
                         <tr>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
+                          <th className="py-3 px-4 text-left">
                             {role !== "Agent" && (
                               <input
                                 type="checkbox"
                                 checked={
-                                  selectedLeads.length ===
-                                    fetchopencustomers?.leads?.length &&
-                                  fetchopencustomers?.leads?.length > 0
+                                  selectedLeads.length === fetchopencustomers.leads.length &&
+                                  fetchopencustomers.leads.length > 0
                                 }
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedLeads(
-                                      fetchopencustomers.leads.map(
-                                        (lead) => lead._id
-                                      )
-                                    );
-                                  } else {
-                                    setSelectedLeads([]);
-                                  }
-                                }}
-                                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                onChange={(e) =>
+                                  setSelectedLeads(
+                                    e.target.checked
+                                      ? fetchopencustomers.leads.map((l) => l._id)
+                                      : []
+                                  )
+                                }
+                                className="h-4 w-4 rounded border-gray-300"
                               />
                             )}
                           </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Sl No
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Name
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Phone Number
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Created By
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Assigned To
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Location
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Priority
-                          </th>
-                          <th className="py-2 sm:py-3 px-2 sm:px-4 text-left">
-                            Status
-                          </th>
+                          <th className="py-3 px-4">Sl No</th>
+                          <th className="py-3 px-4">Name</th>
+                          <th className="py-3 px-4">Phone</th>
+                          <th className="py-3 px-4">Created By</th>
+                          <th className="py-3 px-4">Assigned To</th>
+                          <th className="py-3 px-4">Location</th>
+                          <th className="py-3 px-4">Priority</th>
+                          <th className="py-3 px-4">Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {fetchopencustomers?.leads?.map((lead, index) => (
+                        {fetchopencustomers.leads.map((lead, index) => (
                           <motion.tr
                             key={lead._id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: index * 0.05 }}
-                            className="bg-white even:bg-gray-50 hover:bg-blue-50 text-xs sm:text-sm"
+                            transition={{ delay: index * 0.05 }}
+                            className="even:bg-gray-50 hover:bg-blue-50"
                           >
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
+                            <td className="py-4 px-4">
                               {role !== "Agent" && (
                                 <input
                                   type="checkbox"
                                   checked={selectedLeads.includes(lead._id)}
                                   onChange={() => handleSelectLead(lead._id)}
-                                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                  className="h-4 w-4 rounded"
                                 />
                               )}
                             </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
+                            <td className="py-4 px-4">
                               {(currentpage - 1) * leadsperpage + index + 1}
                             </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
+                            <td className="py-4 px-4">
                               <button
                                 className="text-blue-700 font-semibold hover:underline"
-                                onClick={() =>
-                                  dispatch(toggleCustomerdetailmodal(lead))
-                                }
+                                onClick={() => dispatch(toggleCustomerdetailmodal(lead))}
                               >
                                 {lead.name}
                               </button>
                             </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
-                              {lead.mobile}
-                            </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
-                              {lead.createdBy?.name}
-                            </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
-                              {lead.assignedTo?.name || "N/A"}
-                            </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
-                              {lead.location || "N/A"}
-                            </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
-
-
-
-
-
-                              {/* priority  */}
-                         <select
-  className="border p-1 mt-2 sm:p-2 rounded-md bg-gray-100 hover:bg-white 
-             focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full"
-  value={lead.status === "new" ? "Not Assigned" : (lead.priority || "Not Assigned")}
-  disabled={!!metadata || lead.status === "new"} 
-  onChange={(e) => handlepriority(lead._id, e.target.value)}
->
-  <option value="hot">Hot</option>
-  <option value="warm">Warm</option>
-  <option value="cold">Cold</option>
-  <option value="Not Assigned">Not Assigned</option>
-
-</select>
-
-                            </td>
-                            <td className="py-2 sm:py-4 px-2 sm:px-4">
+                            <td className="py-4 px-4">{lead.mobile}</td>
+                            <td className="py-4 px-4">{lead.createdBy?.name}</td>
+                            <td className="py-4 px-4">{lead.assignedTo?.name || "N/A"}</td>
+                            <td className="py-4 px-4">{lead.location || "N/A"}</td>
+                            <td className="py-4 px-4">
                               <select
-                                className={`border p-1 sm:p-2 rounded-md hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full ${
-                                  statusColors[lead.status] || ""
-                                }`}
-                                value={lead.status}
-                                disable={!!metadata}
-                                onChange={(e) =>
-                                  handleleadchange(lead._id, e.target.value)
-                                }
+                                className="border p-2 rounded-md bg-gray-100 text-xs w-full"
+                                value={lead.status === "new" ? "Not Assigned" : (lead.priority || "Not Assigned")}
+                                disabled={!!metadata || lead.status === "new"}
+                                onChange={(e) => handlepriority(lead._id, e.target.value)}
                               >
-                                <option value="new" className={statusColors.new}>
-                                  New
-                                </option>
-                                <option value="open" className={statusColors.open}>
-                                  Open
-                                </option>
-                                <option value="converted" className={statusColors.converted}>
-                                  Converted
-                                </option>
-                                <option value="closed" className={statusColors.closed}>
-                                  Closed
-                                </option>
-                                <option value="walkin" className={statusColors.walkin}>
-                                  Walk In
-                                </option>
-                                <option value="paused" className={statusColors.paused}>
-                                  Paused
-                                </option>
-                                <option value="rejected" className={statusColors.rejected}>
-                                  Rejected
-                                </option>
-                                <option value="unavailable" className={statusColors.unavailable}>
-                                  Unavailable
-                                </option>
+                                <option value="hot">Hot</option>
+                                <option value="warm">Warm</option>
+                                <option value="cold">Cold</option>
+                                <option value="Not Assigned">Not Assigned</option>
+                              </select>
+                            </td>
+                            <td className="py-4 px-4">
+                              <select
+                                className={`border p-2 rounded-md text-xs w-full ${statusColors[lead.status]}`}
+                                value={lead.status}
+                                disabled={!!metadata}
+                                onChange={(e) => handleleadchange(lead._id, e.target.value)}
+                              >
+                                <option value="new">New</option>
+                                <option value="open">Open</option>
+                                <option value="converted">Converted</option>
+                                <option value="closed">Closed</option>
+                                <option value="walkin">Walk In</option>
+                                <option value="paused">Paused</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="unavailable">Unavailable</option>
                               </select>
                             </td>
                           </motion.tr>
@@ -526,10 +491,12 @@ function Subadminfollowups() {
                     </table>
                   </div>
                 </div>
-                <div className="flex justify-center gap-2 mt-4">
+
+                {/* Pagination */}
+                <div className="flex justify-center gap-2 mt-4 flex-wrap">
                   <button
-                    disabled={currentpage === 1}
                     onClick={() => handlePageChange(currentpage - 1)}
+                    disabled={currentpage === 1}
                     className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
                   >
                     Prev
@@ -548,8 +515,8 @@ function Subadminfollowups() {
                     </button>
                   ))}
                   <button
-                    disabled={currentpage === totalPages}
                     onClick={() => handlePageChange(currentpage + 1)}
+                    disabled={currentpage === totalPages}
                     className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
                   >
                     Next
@@ -557,9 +524,9 @@ function Subadminfollowups() {
                 </div>
               </>
             ) : (
-              <p className="text-gray-500 text-center text-sm sm:text-lg py-4 sm:py-6">
+              <p className="text-center text-gray-500 py-10 text-lg">
                 {totalLeads > 0
-                  ? `No follow-ups available on page ${currentpage}. Try adjusting filters or navigating to another page.`
+                  ? `No leads on page ${currentpage}`
                   : "No Follow-ups Available"}
               </p>
             )}
@@ -567,81 +534,62 @@ function Subadminfollowups() {
         </div>
       </motion.div>
 
+      {/* Modals */}
       <AnimatePresence>
         {statussuccessmodal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
+            className="fixed inset-0 z-50 flex items-center justify-center"
           >
-            <motion.div className="absolute inset-0 bg-black opacity-30" />
+            <div className="absolute inset-0 bg-black opacity-30" />
             <motion.div
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              exit={{ scale: 0.5 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="relative z-10 bg-green-100 text-green-700 px-6 sm:px-10 py-4 sm:py-6 rounded-xl shadow-2xl text-sm sm:text-base font-semibold w-full max-w-xs sm:max-w-sm md:max-w-md h-[100px] sm:h-[120px] flex items-center justify-center text-center"
+              className="bg-green-100 text-green-700 px-10 py-6 rounded-xl shadow-2xl font-semibold"
             >
-              {deleteLeadsMutation.isSuccess
-                ? "Leads deleted successfully!"
-                : "Status updated successfully!"}
+              {deleteLeadsMutation.isSuccess ? "Leads deleted!" : "Updated successfully!"}
             </motion.div>
           </motion.div>
         )}
+
         {showDeleteConfirm && (
-          <motion.div
-            className="absolute inset-0 bg-black/60 flex items-center justify-center z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
             <motion.div
-              className="bg-white rounded-xl p-4 sm:p-6 md:p-8 shadow-lg text-center w-full max-w-xs sm:max-w-sm"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className="bg-white p-8 rounded-xl shadow-xl text-center max-w-sm"
             >
-              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6">
-                Are you sure you want to delete {selectedLeads.length} lead(s)?
+              <h3 className="text-xl font-bold mb-6">
+                Delete {selectedLeads.length} lead(s)?
               </h3>
-              <div className="flex gap-2 sm:gap-4 justify-center">
+              <div className="flex gap-4 justify-center">
                 <button
                   onClick={confirmDelete}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-lg transition text-xs sm:text-sm"
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
                 >
-                  Yes
+                  Yes, Delete
                 </button>
                 <button
-                  onClick={closeDeleteConfirm}
-                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 sm:px-6 py-1.5 sm:py-2 rounded-lg transition text-xs sm:text-sm"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="bg-gray-300 hover:bg-gray-400 px-6 py-2 rounded-lg"
                 >
-                  No
+                  Cancel
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
+
         {iscustomerdetailmodal && (
-          <motion.div
-            key="customer-detail"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
-          >
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
               className="absolute inset-0 bg-black"
             />
-            <div className="relative z-10 w-full max-w-md sm:max-w-lg">
+            <div className="relative z-10 w-full max-w-4xl">
               <Customerdetailmodal />
             </div>
           </motion.div>

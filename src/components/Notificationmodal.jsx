@@ -182,7 +182,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Fullnotificationmodal from './Fullnotificationmodal';
 import { toggleFullnotificationmodal } from '../redux/modalSlice';
 import { isToday, isYesterday, parseISO, format } from 'date-fns';
-import { showRemainder } from '../services/remainderRouter';
+import { showRemainder, getRemainders } from '../services/remainderRouter';
 
 // Utility function to assign background color based on the notification title
 const getNotificationColor = (title) => {
@@ -256,13 +256,13 @@ function Notificationmodal() {
   });
 
   const {
-  data: remainders,
-  isLoading: isRemaindersLoading,
-  isError: isRemaindersError,
-} = useQuery({
-  queryKey: ["List remainders"],
-  queryFn: showRemainder,
-});
+    data: remainders,
+    isLoading: isRemaindersLoading,
+    isError: isRemaindersError,
+  } = useQuery({
+    queryKey: ["List remainders"],
+    queryFn: getRemainders,
+  });
 
   const handledelete = async (id) => {
     await deletingnotification.mutateAsync(id);

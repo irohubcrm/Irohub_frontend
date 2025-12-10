@@ -58,16 +58,15 @@ const InputField = ({
         className={`
           w-full pl-10 pr-4 py-3 border-2 rounded-xl transition-all duration-200
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-          ${
-            error
-              ? "border-red-300 bg-red-50 text-black"
-              : "border-gray-200 hover:border-gray-300 bg-white"
+          ${error
+            ? "border-red-300 bg-red-50 text-black"
+            : "border-gray-200 hover:border-gray-300 bg-white"
           }
         `}
       />
     </div>
     {error && (
-      <p className="text-white-500 text-xs flex items-center gap-1">
+      <p className="text-red-500 text-xs flex items-center gap-1">
         <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
         {error}
       </p>
@@ -103,10 +102,9 @@ const SelectField = ({
         className={`
           w-full pl-10 pr-4 py-3 border-2 rounded-xl transition-all duration-200
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-          ${
-            error
-              ? "border-red-300 bg-red-50"
-              : "border-gray-200 hover:border-gray-300 bg-white"
+          ${error
+            ? "border-red-300 bg-red-50"
+            : "border-gray-200 hover:border-gray-300 bg-white"
           }
           appearance-none bg-white
         `}
@@ -167,7 +165,7 @@ function CustomereditModal() {
       const previousLeads = queryClient.getQueryData(["Listleads"]);
 
       queryClient.setQueryData(["Listleads"], (old) => {
-        if (!old  || !old.data) return old;
+        if (!old || !old.data) return old;
 
         return {
           ...old,
@@ -204,19 +202,37 @@ function CustomereditModal() {
   const customerEditformvalidation = Yup.object({
     name: Yup.string()
       .required("Name is required")
-      .matches(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces")
+      .matches(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces")
+      .test('no-numeric', 'Name cannot contain numbers', value => {
+        return !/\d/.test(value);
+      })
       .min(3, "Name must be at least 3 characters"),
     email: Yup.string()
       .required("Email is required")
-      .email("Invalid email format"),
+      .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "Invalid email format"),
     mobile: Yup.string()
       .required("Mobile is required")
-      .matches(
-        /^\+?[0-9\s]+$/,
-        "Mobile number can contain digits, spaces, and optional '+'"
-      )
-      .min(7, "Mobile number must be at least 7 digits")
-      .max(15, "Mobile number must be at most 15 digits"),
+      .matches(/^[0-9]{5,15}$/, "Enter a valid mobile number (5-15 digits)")
+      .test(
+        "no-leading-zero",
+        "Mobile number cannot start with 0",
+        function (value) {
+          if (!value) return true;
+          // In this component, mobile might be stored without country code or with it?
+          // customereditForm initial values logic suggests:
+          // mobile is raw (without country code) OR full?
+          // Helper 'extractCountryAndNumber' separates them.
+          // onSubmit re-combines them.
+          // BUT: useFormik uses 'mobile' from initialValues.
+          // handlePhoneChange is NOT used here. It uses InputField which is generic.
+          // Wait, 'CustomereditModal' uses InputField (text) for mobile?
+          // Line 390: <InputField name="mobile" ... />
+          // Line 391: <SelectField name="countrycode" ... />
+          // So 'mobile' here is purely the national number!
+          // So checking startsWith('0') on 'value' is sufficient!
+          return !value.startsWith("0");
+        }
+      ),
     countrycode: Yup.string().required("Country code is required"),
     source: Yup.string(),
     location: Yup.string(),
@@ -228,6 +244,7 @@ function CustomereditModal() {
   const { countrycode, mobile } = extractCountryAndNumber(selectedLead?.mobile);
 
   const customereditForm = useFormik({
+    enableReinitialize: true,
     initialValues: {
       name: selectedLead?.name || "",
       email: selectedLead?.email || "",
@@ -240,6 +257,12 @@ function CustomereditModal() {
     },
     validationSchema: customerEditformvalidation,
     onSubmit: async (values) => {
+      const errors = await customereditForm.validateForm(values);
+      if (Object.keys(errors).length > 0) {
+        customereditForm.setTouched(errors);
+        return;
+      }
+
       let mobile = values.mobile.replace(/\s+/g, "");
 
       // Remove existing country code from mobile number if present
@@ -324,7 +347,7 @@ function CustomereditModal() {
               className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 flex items-center gap-2"
             >
               <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
-              {updatingcustomers.error?.response?.data?.message}
+              {updatingcustomers.error?.response?.data?.error}
             </motion.div>
           )}
         </AnimatePresence>

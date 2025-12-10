@@ -15,6 +15,7 @@ import { getProducts } from "../services/paymentstatusRouter";
 import toast from "react-hot-toast";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/bootstrap.css";
+import { extractCountryAndNumber, extractCountryCode } from "../utils/phoneUtils";
 
 function Convertedleadeditmodal() {
   const selectedlead = useSelector((state) => state.modal.selectedLead);
@@ -22,12 +23,14 @@ function Convertedleadeditmodal() {
   const queryclient = useQueryClient();
 
   // --------------------- PHONE HANDLERS ---------------------
-  const handlePhoneChange = (phone) => {
-    convertedleadeditForm.setFieldValue("mobile", `+${phone}`);
+  const handlePhoneChange = (value, country) => {
+    convertedleadeditForm.setFieldValue("mobile", value);
+    convertedleadeditForm.setFieldValue("mobileCountryCode", `+${country.dialCode}`);
   };
 
-  const handleAltPhoneChange = (phone) => {
-    convertedleadeditForm.setFieldValue("alternativemobile", `+${phone}`);
+  const handleAltPhoneChange = (value, country) => {
+    convertedleadeditForm.setFieldValue("alternativemobile", value);
+    convertedleadeditForm.setFieldValue("alternativemobileCountryCode", `+${country.dialCode}`);
   };
 
   // --------------------- GET PRODUCT LIST ---------------------
@@ -109,11 +112,69 @@ function Convertedleadeditmodal() {
     name: Yup.string(),
     mobile: Yup.string()
       .required("Mobile number is required")
-      .matches(/^\+\d{7,14}$/, "Enter a valid international phone number"),
+      .test(
+        'no-leading-zeros-mobile',
+        'Mobile number cannot start with 000 after country code',
+        function(value) {
+          if (!value) return true;
+          const countryCode = this.parent.mobileCountryCode;
+          let nationalNumber = value;
+          if (countryCode && value.startsWith(countryCode)) {
+            nationalNumber = value.substring(countryCode.length).replace(/\s+/g, '');
+          } else {
+            nationalNumber = value.replace(/\s+/g, '');
+          }
+          return !nationalNumber.startsWith('000');
+        }
+      )
+      .test(
+        'mobile-min-max-length',
+        'Mobile number length is invalid (7-15 digits after country code)',
+        function(value) {
+          if (!value) return true;
+          const countryCode = this.parent.mobileCountryCode;
+          let nationalNumber = value;
+          if (countryCode && value.startsWith(countryCode)) {
+            nationalNumber = value.substring(countryCode.length).replace(/\s+/g, '');
+          } else {
+            nationalNumber = value.replace(/\s+/g, '');
+          }
+          return nationalNumber.length >= 7 && nationalNumber.length <= 15;
+        }
+      ),
 
     alternativemobile: Yup.string()
       .nullable()
-      .matches(/^\+\d{7,14}$/, "Enter a valid phone number")
+      .test(
+        'no-leading-zeros-alt-mobile',
+        'Alternative mobile number cannot start with 000 after country code',
+        function(value) {
+          if (!value) return true;
+          const countryCode = this.parent.alternativemobileCountryCode;
+          let nationalNumber = value;
+          if (countryCode && value.startsWith(countryCode)) {
+            nationalNumber = value.substring(countryCode.length).replace(/\s+/g, '');
+          } else {
+            nationalNumber = value.replace(/\s+/g, '');
+          }
+          return !nationalNumber.startsWith('000');
+        }
+      )
+      .test(
+        'alt-mobile-min-max-length',
+        'Alternative mobile number length is invalid (7-15 digits after country code)',
+        function(value) {
+          if (!value) return true;
+          const countryCode = this.parent.alternativemobileCountryCode;
+          let nationalNumber = value;
+          if (countryCode && value.startsWith(countryCode)) {
+            nationalNumber = value.substring(countryCode.length).replace(/\s+/g, '');
+          } else {
+            nationalNumber = value.replace(/\s+/g, '');
+          }
+          return nationalNumber.length >= 7 && nationalNumber.length <= 15;
+        }
+      )
       .notRequired(),
 
     email: Yup.string()
@@ -129,7 +190,9 @@ function Convertedleadeditmodal() {
     initialValues: {
       name: selectedlead?.name || "",
       mobile: selectedlead?.mobile || "",
-      alternativemobile: selectedlead?.alternativemobile || "+91",
+      mobileCountryCode: selectedlead?.mobile ? extractCountryCode(selectedlead.mobile) : "+91",
+      alternativemobile: selectedlead?.alternativemobile || "",
+      alternativemobileCountryCode: selectedlead?.alternativemobile ? extractCountryCode(selectedlead.alternativemobile) : "+91",
       email: selectedlead?.email || "",
       product: selectedlead?.product || "",
     },

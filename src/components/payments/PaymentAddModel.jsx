@@ -122,7 +122,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
         if (prev)
           try {
             URL.revokeObjectURL(prev);
-          } catch (e) {}
+          } catch (e) { }
         return URL.createObjectURL(file);
       });
     }
@@ -133,7 +133,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
       if (localPreview)
         try {
           URL.revokeObjectURL(localPreview);
-        } catch (e) {}
+        } catch (e) { }
     };
   }, [localPreview]);
 
@@ -141,6 +141,16 @@ const PaymentAddModel = ({ customerId, productId }) => {
     e.preventDefault();
     if (!amount || !date || !paymentMode)
       return toast.error("⚠ Please fill all fields.");
+
+    // CRM_68 & CRM_69: Date Validation
+    const selectedDate = new Date(date);
+    const today = new Date();
+    if (selectedDate > today) {
+      return toast.error("⚠ Payment date cannot be in the future.");
+    }
+    if (selectedDate.getFullYear().toString().length !== 4) {
+      return toast.error("⚠ Invalid year in payment date.");
+    }
 
     try {
       setIsUploading(true);
@@ -176,7 +186,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
   // Extract safe payment values
   const totalAmount = paymentInfo?.allPayment?.totalAmount ?? 0;
   const totalPaid = paymentInfo?.allPayment?.totalPaid ?? 0;
-  const balance = totalAmount - totalPaid;
+  const balance = paymentInfo?.balance ?? 0;
 
   return (
     <div className="m-6 bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl shadow-lg border border-gray-100">
@@ -203,6 +213,8 @@ const PaymentAddModel = ({ customerId, productId }) => {
           onChange={(e) => setDate(e.target.value)}
           className="p-3 border rounded-xl"
           required
+          max={new Date().toISOString().split("T")[0]}
+          min="2000-01-01"
         />
 
         <select
@@ -380,15 +392,14 @@ const PaymentAddModel = ({ customerId, productId }) => {
           relative group rounded-lg overflow-hidden 
           shadow-md border bg-white transition 
           hover:shadow-lg hover:scale-105
-          ${
-            item.paymentMode === "cash"
-              ? "border-yellow-400"
-              : item.paymentMode === "upi"
-              ? "border-green-400"
-              : item.paymentMode === "card"
-              ? "border-blue-400"
-              : "border-purple-400"
-          }
+          ${item.paymentMode === "cash"
+                                ? "border-yellow-400"
+                                : item.paymentMode === "upi"
+                                  ? "border-green-400"
+                                  : item.paymentMode === "card"
+                                    ? "border-blue-400"
+                                    : "border-purple-400"
+                              }
         `}
                           >
                             <img
@@ -413,11 +424,10 @@ const PaymentAddModel = ({ customerId, productId }) => {
                         </div>
                       ) : (
                         <span
-                          className={`text-sm px-3 py-2 rounded-full ${
-                            item.paymentMode === "cash"
+                          className={`text-sm px-3 py-2 rounded-full ${item.paymentMode === "cash"
                               ? "bg-yellow-50 text-yellow-600"
                               : "bg-green-50 text-green-600"
-                          }`}
+                            }`}
                         >
                           {item.paymentMode === "cash"
                             ? "📄 No receipt"
@@ -495,7 +505,7 @@ const PaymentAddModel = ({ customerId, productId }) => {
             onClose={() => {
               try {
                 URL.revokeObjectURL(localPreview);
-              } catch (e) {}
+              } catch (e) { }
               setLocalPreview(null);
             }}
           />

@@ -21,6 +21,7 @@ function Customermodal() {
   const [phone, setPhone] = useState("");
   const [countryCode, setCountryCode] = useState("");
   const [isValid, setIsValid] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // ✅ Fetch lead sources
   const fetchleadsource = useQuery({
@@ -37,36 +38,109 @@ function Customermodal() {
   const getSelectedProduct = getProduct?.data?.getProduct;
 
   // ✅ Mutation for adding customers
+  // const addingcustomers = useMutation({
+  //   mutationKey: ["Addh Leads"],
+  //   mutationFn: addleads,
+  //   onSuccess: () => {
+  //     queryclient.invalidateQueries(["Addingleads"]);
+  //   },
+  //   onError: (error) => {
+  //     console.error("Error adding lead:", error);
+  //     setErrorMessage(error?.response?.data?.message || "An error occurred while adding the lead");
+  //   },
+  // });
+
+
   const addingcustomers = useMutation({
-    mutationKey: ["Add Leads"],
     mutationFn: addleads,
     onSuccess: () => {
-      queryclient.invalidateQueries(["Addingleads"]);
+      queryclient.invalidateQueries(["List leads"]); // correct query
+      setshowsuccess(true);
+    },
+    onError: (error) => {
+      setshowsuccess(false);
+      setErrorMessage(
+        error?.response?.data?.message ||
+        "❌ Lead already exists or duplicate detected"
+      );
     },
   });
+
+
+  // ✅ Yup Validation Schema
+  //   const customerformvalidation = Yup.object({
+  //     name: Yup.string()
+  //       .required("Name is required")
+  //       .matches(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces")
+  //       .min(3, "Name must be at least 3 characters"),
+  //     email: Yup.string()
+  //       .required("Email is required")
+  //       .email("Invalid email format"),
+  //     mobile: Yup.string()
+  //           .matches(/^[0-9,-,+]+$/, "Mobile number must contain only digits")
+  //           .min(7, "Mobile number is too short")
+  //           .max(15, "Mobile number is too long")
+  //           .required("Mobile is required"),
+  //     countryCode: Yup.string().required("Country code is required"),
+  //     source: Yup.string(),
+  //     location: Yup.string(),
+  //     interestedproduct:Yup.string().required("lkjhgf"),
+  // leadvalue: Yup.number()
+  //   .required("Lead value is required")
+  //   .typeError("Lead value must be a valid number")
+  //   .moreThan(0, "Lead value must be greater than 0"),
+
+  //   });
+
 
   // ✅ Yup Validation Schema
   const customerformvalidation = Yup.object({
     name: Yup.string()
       .required("Name is required")
-      .matches(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces")
+      .matches(/^[A-Za-z\s]+$/, "Name can only contain letters")
       .min(3, "Name must be at least 3 characters"),
+
     email: Yup.string()
       .required("Email is required")
       .email("Invalid email format"),
+
     mobile: Yup.string()
-          .matches(/^[0-9,-,+]+$/, "Mobile number must contain only digits")
-          .min(7, "Mobile number is too short")
-          .max(15, "Mobile number is too long")
-          .required("Mobile is required"),
+      .matches(/^[0-9,-,+]+$/, "Mobile number must contain only digits")
+      .min(7, "Mobile number is too short")
+      .max(15, "Mobile number is too long")
+      .required("Mobile is required")
+      .test(
+        "no-leading-zero",
+        "Mobile number cannot start with 0",
+        function (value) {
+          if (!value) return true;
+          // In Customermodal, handlePhoneChange manages 'phone' state.
+          // and sets 'mobile' field to `+${value}` (full number)
+          // and 'countryCode' to `+${dialCode}`
+          const { countryCode } = this.parent;
+          const cleanPhone = value.replace("+", "");
+          const cleanCountry = countryCode ? countryCode.toString().replace("+", "") : "";
+          if (cleanCountry && cleanPhone.startsWith(cleanCountry)) {
+            const national = cleanPhone.slice(cleanCountry.length);
+            return !national.startsWith("0");
+          }
+          return true;
+        }
+      ),
+
     countryCode: Yup.string().required("Country code is required"),
+
     source: Yup.string(),
+
     location: Yup.string(),
-    interestedproduct:Yup.string(),
- leadvalue: Yup.number()
-    .required("Lead value is required")
-    .typeError("Lead value must be a valid number")
-    .min(0, "Lead value cannot be negative"),
+
+    interestedproduct: Yup.string()
+      .required("Product selection is required"), // 👈 FIXED (mandatory)
+
+    leadvalue: Yup.number()
+      .required("Lead value is required")
+      .typeError("Lead value must be a valid number")
+      .moreThan(0, "Lead value must be greater than 0"),
   });
 
   // ✅ Formik setup
@@ -77,7 +151,7 @@ function Customermodal() {
       mobile: "",
       source: "",
       location: "",
-        interestedproduct: "",
+      interestedproduct: "",
       countryCode: "+91",
       leadvalue: "",
     },
@@ -98,6 +172,7 @@ function Customermodal() {
         leadvalue: true,
       });
 
+
       // ✅ Validate form
       const isValidForm = await customerForm.validateForm();
       if (Object.keys(isValidForm).length !== 0) return; // stop submit if invalid
@@ -111,6 +186,7 @@ function Customermodal() {
 
       const payload = { ...values, mobile };
 
+      setErrorMessage(""); // Clear any previous error messages
       await addingcustomers.mutateAsync(payload);
       setshowsuccess(true);
       setTimeout(() => {
@@ -140,7 +216,7 @@ function Customermodal() {
     (source) => source.active
   );
 
-  
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 p-4 sm:p-0">
       <motion.div
@@ -164,7 +240,10 @@ function Customermodal() {
         {/* Right Section - Form */}
         <div className="relative w-full md:w-2/3 p-6">
           <button
-            onClick={() => dispatch(toggleCustomermodal())}
+            onClick={() => {
+              setErrorMessage("");
+              dispatch(toggleCustomermodal());
+            }}
             className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-red-500 transition"
           >
             &times;
@@ -181,9 +260,14 @@ function Customermodal() {
                 type="text"
                 name="name"
                 {...customerForm.getFieldProps("name")}
+                onInput={(e) => {
+                  // Remove numbers and special characters live
+                  e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                }}
                 className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
                 placeholder="Enter name"
               />
+
               {customerForm.touched.name && customerForm.errors.name && (
                 <p className="text-red-500 text-sm mt-1">
                   {customerForm.errors.name}
@@ -206,11 +290,11 @@ function Customermodal() {
               />
               {(!isValid ||
                 (customerForm.touched.mobile && customerForm.errors.mobile)) && (
-                <p className="text-red-500 text-sm mt-2">
-                  {customerForm.errors.mobile ||
-                    "⚠️ Please enter a valid phone number for selected country"}
-                </p>
-              )}
+                  <p className="text-red-500 text-sm mt-2">
+                    {customerForm.errors.mobile ||
+                      "⚠️ Please enter a valid phone number for selected country"}
+                  </p>
+                )}
             </div>
 
             {/* Email */}
@@ -258,6 +342,19 @@ function Customermodal() {
 
             {/* Product */}
             <div>
+              {/* <select
+                name="interestedproduct"
+                {...customerForm.getFieldProps("interestedproduct")}
+                className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">-- Select Product --</option>
+                {getSelectedProduct?.map((product) => (
+                  <option key={product._id} value={product.title}>
+                    {product.title}
+                  </option>
+                ))}
+              </select> */}
+
               <select
                 name="interestedproduct"
                 {...customerForm.getFieldProps("interestedproduct")}
@@ -270,6 +367,11 @@ function Customermodal() {
                   </option>
                 ))}
               </select>
+              {customerForm.touched.interestedproduct && customerForm.errors.interestedproduct && (
+                <p className="text-red-500 text-sm mt-1">
+                  {customerForm.errors.interestedproduct}
+                </p>
+              )}
             </div>
 
             {/* Lead Value */}
@@ -288,6 +390,12 @@ function Customermodal() {
                   </p>
                 )}
             </div>
+            {errorMessage && (
+              <p className="text-red-500 text-sm mt-2 font-semibold">
+                {errorMessage}
+              </p>
+            )}
+
 
             {/* Submit */}
             <button
