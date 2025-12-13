@@ -31,6 +31,8 @@ const ProductPaymentDetails = ({ startDate, endDate }) => {
   // 🔥 Ultra-Optimized Processing with Maps + Single-Pass Reduction
   // ----------------------------------------------------------------
   const { productSummary, productCustomers, grandTotals } = useMemo(() => {
+    // We'll avoid double-counting invoice totals by tracking unique payment IDs per product.
+    // We also sum transaction-level paid amounts (tx.paidAmount) when available.
     const productMap = new Map();
     const customersByProduct = new Map();
     const globalPaidCustomers = new Set();
@@ -49,8 +51,16 @@ const ProductPaymentDetails = ({ startDate, endDate }) => {
       const customerId = customer._id;
       const title = product.title || product.name || "Unknown Product";
 
-      const total_amount = Number(payment.totalAmount || 0);
-      const total_paid = Number(payment.totalPaid || 0);
+      // Determine unique invoice/payment ID. Fall back to a stable generated key
+      // if payment._id is missing to avoid accidental de-dup issues.
+      const invoiceId = payment._id || tx._id || `${productId}_${customerId}_${payment.totalAmount || 0}`;
+
+      // Prefer transaction-level paid amount; fallback to payment.totalPaid
+      const transactionPaid = Number(tx.paidAmount ?? tx.amount ?? 0);
+      const invoicePaid = Number(payment.totalPaid ?? 0);
+      const txPaid = transactionPaid || invoicePaid || 0;
+
+      const invoiceTotal = Number(payment.totalAmount || 0);
 
       // Initialize product entry
       if (!productMap.has(productId)) {
@@ -60,39 +70,75 @@ const ProductPaymentDetails = ({ startDate, endDate }) => {
           total_payment: 0,
           payment_paid: 0,
           paidCustomerIds: new Set(),
+          seenInvoiceIds: new Set(), // track unique invoices for this product
         });
-        customersByProduct.set(productId, []);
+        customersByProduct.set(productId, new Map());
       }
 
       const p = productMap.get(productId);
-      p.total_payment += total_amount;
-      p.payment_paid += total_paid;
 
-      if (total_paid > 0) {
+      // Only add the invoice's total amount once per invoice for the product
+      if (invoiceId && !p.seenInvoiceIds.has(invoiceId)) {
+        p.total_payment += invoiceTotal;
+        p.seenInvoiceIds.add(invoiceId);
+        totalPayment += invoiceTotal;
+      }
+
+      // Sum the paid amount from the transaction (or invoice fallback)
+      p.payment_paid += txPaid;
+      totalPaid += txPaid;
+
+      if (txPaid > 0) {
         p.paidCustomerIds.add(customerId);
         globalPaidCustomers.add(customerId);
       }
 
-      customersByProduct.get(productId).push({
-        customerName: customer.name || "Unknown",
-        totalAmount: total_amount,
-        totalPaid: total_paid,
-        due: total_amount - total_paid,
-      });
+      // Add or aggregate for this customer under this product
+      const cMap = customersByProduct.get(productId);
+      if (!cMap.has(customerId)) {
+        cMap.set(customerId, {
+          customerName: customer.name || "Unknown",
+          totalAmount: 0,
+          totalPaid: 0,
+          seenInvoiceIds: new Set(),
+        });
+      }
 
-      totalPayment += total_amount;
-      totalPaid += total_paid;
+      const c = cMap.get(customerId);
+
+      // Add invoice total once per invoice for customer
+      if (invoiceId && !c.seenInvoiceIds.has(invoiceId)) {
+        c.totalAmount += invoiceTotal;
+        c.seenInvoiceIds.add(invoiceId);
+      }
+
+      // transaction-level paid amounts add up
+      c.totalPaid += txPaid;
     });
 
-    // Convert Maps → Arrays
+    // Convert Maps → Arrays / Objects and compute derived fields
     const summaryArr = Array.from(productMap.values()).map((p) => ({
-      ...p,
+      productId: p.productId,
+      title: p.title,
+      total_payment: p.total_payment,
+      payment_paid: p.payment_paid,
       customersPaid: p.paidCustomerIds.size,
     }));
 
+    // Convert customers map into arrays with computed due
+    const customersObj = {};
+    for (const [pid, cMap] of customersByProduct.entries()) {
+      customersObj[pid] = Array.from(cMap.values()).map((c) => ({
+        customerName: c.customerName,
+        totalAmount: c.totalAmount,
+        totalPaid: c.totalPaid,
+        due: Math.max(0, c.totalAmount - c.totalPaid),
+      }));
+    }
+
     return {
       productSummary: summaryArr,
-      productCustomers: Object.fromEntries(customersByProduct),
+      productCustomers: customersObj,
       grandTotals: {
         totalPayment,
         totalPaid,
@@ -215,7 +261,7 @@ const ProductPaymentDetails = ({ startDate, endDate }) => {
                           </thead>
 
                           <tbody>
-                            {productCustomers[p.productId].map((c, i) => (
+                            {(productCustomers[p.productId] ?? []).map((c, i) => (
                               <tr key={i} className="hover:bg-white">
                                 <td className="px-4 py-2 border">
                                   {c.customerName}
