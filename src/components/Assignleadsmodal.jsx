@@ -16,7 +16,31 @@ function Assignleadsmodal() {
   const [daterangefilter, setdaterangefilter] = useState({ start: null, end: null })
   const [searchText, setsearchText] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [yearError, setYearError] = useState("");
   const leadsPerPage = 10
+
+  const validateYear = (dateValue) => {
+    const year = dateValue.split("-")[0];
+    if (year && year.length > 4) {
+      setYearError("Year must be a 4-digit value");
+      return false;
+    }
+    setYearError("");
+    return true;
+  };
+
+  const handleDateChange = (value, type, field) => {
+    if (validateYear(value)) {
+      if (type === "custom") {
+        setselectdatefilter(new Date(value));
+      } else if (type === "range") {
+        setdaterangefilter({
+          ...daterangefilter,
+          [field]: new Date(value),
+        });
+      }
+    }
+  };
 
   const { data: fetchleads, isLoading } = useQuery({
     queryKey: [
@@ -125,7 +149,7 @@ function Assignleadsmodal() {
 
           {datefilter === 'custom' && (
             <div>
-              <input type="date" onChange={(e) => setselectdatefilter(new Date(e.target.value))} />
+              <input type="date" onChange={(e) => handleDateChange(e.target.value, "custom")} />
             </div>
           )}
 
@@ -134,17 +158,18 @@ function Assignleadsmodal() {
               <input
                 type="date"
                 onChange={(e) =>
-                  setdaterangefilter({ ...daterangefilter, start: new Date(e.target.value) })
+                  handleDateChange(e.target.value, "range", "start")
                 }
               />
               <input
                 type="date"
                 onChange={(e) =>
-                  setdaterangefilter({ ...daterangefilter, end: new Date(e.target.value) })
+                  handleDateChange(e.target.value, "range", "end")
                 }
               />
             </div>
           )}
+          {yearError && <p className="text-red-500 text-xs">{yearError}</p>}
 
           <div>
             <select

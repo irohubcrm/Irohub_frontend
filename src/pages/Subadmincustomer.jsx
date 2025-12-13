@@ -20,6 +20,7 @@ import { listcustomersettingstatus } from "../services/settingservices/customerS
 import Spinner from "../components/Spinner";
 import { Trash2 } from "lucide-react";
 import ConvertedCustomerdetailModal from "../components/ConvertedCustomerdetailModal";
+import { toast } from "react-hot-toast";
 
 function Subadmincustomer() {
   const dispatch = useDispatch();
@@ -47,7 +48,31 @@ function Subadmincustomer() {
   const [currentpage, setcurrentpage] = useState(1);
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [yearError, setYearError] = useState("");
   const leadsperpage = 10;
+
+  const validateYear = (dateValue) => {
+    const year = dateValue.split("-")[0];
+    if (year && year.length > 4) {
+      setYearError("Year must be a 4-digit value");
+      return false;
+    }
+    setYearError("");
+    return true;
+  };
+
+  const handleDateChange = (value, type, field) => {
+    if (validateYear(value)) {
+      if (type === "custom") {
+        setselectdatefilter(new Date(value));
+      } else if (type === "range") {
+        setdaterangefilter({
+          ...daterangefilter,
+          [field]: new Date(value),
+        });
+      }
+    }
+  };
 
   const { data: fetchconvertedcustomers, isLoading } = useQuery({
     queryKey: [
@@ -134,10 +159,16 @@ function Subadmincustomer() {
   });
 
   const handlecustomerstatus = async (customerId, status) => {
-    const statusToSend = status === "" ? null : status;
+    // CRM_66 Fix Start: Prevent update if status is not valid
+    if (!status) {
+      toast.error("Please select a valid status.");
+      queryclient.invalidateQueries(["List converted customers"]); // Revert UI change
+      return;
+    }
+    // CRM_66 Fix End
     await updatingcustomerstatus.mutateAsync({
       customerId,
-      status: statusToSend,
+      status: status,
     });
     setstatussuccessmodal(true);
     setTimeout(() => {
@@ -292,9 +323,7 @@ function Subadmincustomer() {
               {datefilter === "custom" && (
                 <input
                   type="date"
-                  onChange={(e) =>
-                    setselectdatefilter(new Date(e.target.value))
-                  }
+                  onChange={(e) => handleDateChange(e.target.value, "custom")}
                   className="px-4 py-2 rounded-lg border border-gray-300"
                 />
               )}
@@ -303,25 +332,20 @@ function Subadmincustomer() {
                   <input
                     type="date"
                     onChange={(e) =>
-                      setdaterangefilter({
-                        ...daterangefilter,
-                        start: new Date(e.target.value),
-                      })
+                      handleDateChange(e.target.value, "range", "start")
                     }
                     className="px-4 py-2 rounded-lg border border-gray-300"
                   />
                   <input
                     type="date"
                     onChange={(e) =>
-                      setdaterangefilter({
-                        ...daterangefilter,
-                        end: new Date(e.target.value),
-                      })
+                      handleDateChange(e.target.value, "range", "end")
                     }
                     className="px-4 py-2 rounded-lg border border-gray-300"
                   />
                 </div>
               )}
+              {yearError && <p className="text-red-500 text-xs">{yearError}</p>}
             </div>
 
             {/* Right side: Search */}
@@ -512,7 +536,7 @@ function Subadmincustomer() {
                               <td className="py-2 sm:py-4 px-2 sm:px-4">
                                 <select
                                   className="border p-1 sm:p-2 rounded-md bg-gray-100 hover:bg-white focus:ring-2 focus:ring-blue-400 transition text-xs sm:text-sm w-full"
-                               value={customer.status?._id || ""}
+                               value={customer.status?._id || ''}
 
                                   disabled={!!metadata}
                                   onChange={(e) =>
@@ -522,7 +546,7 @@ function Subadmincustomer() {
                                     )
                                   }
                                 >
-                                  <option value="" label="Select" />
+                                  <option value='' label="Select" />
                                   {filteredcustomerstatus?.map(
                                     (customerstatus) => (
                                       <option

@@ -31,7 +31,6 @@ const Gstmodal = () => {
     }
   return (
     <div>
-        
         <table className="min-w-full text-xs sm:text-sm mt-4">
             <thead className="bg-gray-200 text-gray-700">
                 <tr>

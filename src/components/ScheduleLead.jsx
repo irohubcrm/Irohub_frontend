@@ -9,6 +9,7 @@ const ScheduleLead = ({ leadId, onClose }) => {
   const [formData, setFormData] = useState({
     date: "",
     notes: "",
+    sound: "sound1",
   });
 
   // --- useMutation for creating a remainder ---
@@ -16,12 +17,12 @@ const ScheduleLead = ({ leadId, onClose }) => {
     mutationFn: (remainderData) => addRemainder(remainderData),
     onSuccess: (data) => {
       alert("Remainder scheduled successfully!");
-      
+
 
       // Invalidate reminder list queries so UI updates automatically
       queryClient.invalidateQueries(["remainders"]);
 
-      setFormData({ date: "", notes: "" });
+      setFormData({ date: "", notes: "", sound: "sound1" });
       onClose();
     },
     onError: (error) => {
@@ -42,9 +43,30 @@ const ScheduleLead = ({ leadId, onClose }) => {
       return;
     }
 
+    // Validate year range (4 digits max, reasonable range)
+    const selectedDate = new Date(formData.date);
+    const year = selectedDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    if (year < 1900 || year > currentYear + 10) {
+      alert("Year must be between 1900 and " + (currentYear + 10));
+      return;
+    }
+
+    // Validate date is not in the past
+    const today = new Date();
+    selectedDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      alert("Reminder date cannot be in the past");
+      return;
+    }
+
     const remainderData = {
       date: formData.date,
       description: formData.notes,
+      sound: formData.sound,
       leadId: leadId, // optional, if backend supports it
     };
 
@@ -67,6 +89,21 @@ const ScheduleLead = ({ leadId, onClose }) => {
             onChange={handleChange}
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="mb-1 text-gray-700 font-medium">Sound</label>
+          <select
+            name="sound"
+            value={formData.sound}
+            onChange={handleChange}
+            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          >
+            <option value="sound1">Sound 1</option>
+            <option value="sound2">Sound 2</option>
+            <option value="sound3">Sound 3</option>
+            <option value="sound4">Sound 4</option>
+          </select>
         </div>
 
         <div className="flex flex-col">
@@ -93,11 +130,10 @@ const ScheduleLead = ({ leadId, onClose }) => {
           <button
             type="submit"
             disabled={addRemainderMutation.isPending}
-            className={`px-4 py-2 text-white rounded-lg ${
-              addRemainderMutation.isPending
+            className={`px-4 py-2 text-white rounded-lg ${addRemainderMutation.isPending
                 ? "bg-blue-400"
                 : "bg-blue-600 hover:bg-blue-700"
-            }`}
+              }`}
           >
             {addRemainderMutation.isPending ? "Saving..." : "Save"}
           </button>

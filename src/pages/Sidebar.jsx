@@ -561,22 +561,20 @@ function Sidebar() {
     "Sub-Admin": [
       { to: "/admindashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
       { to: "/staffs", icon: <FaUserFriends />, label: "Staffs" },
-      ...(displayLeadDetails?.active ? [{ to: "/leads", icon: <FaAddressBook />, label: "Leads" }] : []),
+      { to: "/leads", icon: <FaAddressBook />, label: "Leads" },
       { to: "/followups", icon: <FaBook />, label: "Followups" },
-      ...(displayCustomerDetails?.active ? [{ to: "/customers", icon: <FaUsers />, label: "Customers" }] : []),
+      { to: "/customers", icon: <FaUserFriends />, label: "Customers" },
+
       { to: "/subadmintasks", icon: <FaTasks />, label: "Tasks" },
       { to: "/payments", icon: <FaDollarSign />, label: "Payments" },
       { to: "/subadminreports", icon: <FaChartBar />, label: "Reports" },
     ],
     Agent: [
       { to: "/subadminhome", icon: <FaTachometerAlt />, label: "Dashboard" },
-      ...(hideLeadDetails?.active === false && displayLeadDetails?.active
-        ? [{ to: "/leads", icon: <FaEnvelope />, label: "Lead List" }]
-        : []),
+      { to: "/leads", icon: <FaEnvelope />, label: "Lead List" },
       { to: "/followups", icon: <FaClock />, label: "Followups" },
-      ...(displayCustomerDetails?.active
-        ? [{ to: "/customers", icon: <FaUserFriends />, label: "Customers" }]
-        : []),
+     { to: "/customers", icon: <FaUserFriends />, label: "Customers" },
+
       { to: "/agenttasks", icon: <FaTasks />, label: "Tasks" },
       { to: "/payments", icon: <FaDollarSign />, label: "Payments" },
     ],

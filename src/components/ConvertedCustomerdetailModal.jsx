@@ -39,7 +39,7 @@ function ConvertedCustomerdetailModal() {
   const dispatch = useDispatch();
   const queryclient = useQueryClient();
   const selectedcustomer = useSelector((state) => state.modal.selectedCustomer);
-  // console.log(selectedcustomer,"selectedcustomer from customer")
+
   const selectedlead = useSelector((state) => state.modal.selectedLead);
 
   const isConvertededitmodal = useSelector(

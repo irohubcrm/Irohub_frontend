@@ -62,25 +62,26 @@ const CustomerStatusPieChart = ({ startDate, endDate }) => {
 
     return counts;
   }, [filteredCustomers]);
+const statuses = [
+  { label: `Success: ${statusCount.success}`, value: statusCount.success, color: '#10B981' },
+  { label: `Failed: ${statusCount.failed}`, value: statusCount.failed, color: '#EF4444' },
+  { label: `Pending: ${statusCount.pending}`, value: statusCount.pending, color: '#F59E0B' },
+];
 
-  const chartData = {
-    labels: [
-      `Success: ${statusCount.success}`,
-      `Failed: ${statusCount.failed}`,
-      `Pending: ${statusCount.pending}`
-    ],
-    datasets: [
-      {
-        data: [
-          statusCount.success,
-          statusCount.failed,
-          statusCount.pending
-        ],
-        backgroundColor: ['#10B981', '#EF4444', '#F59E0B'], // green, red, amber
-        borderWidth: 1
-      }
-    ]
-  };
+// remove data with 0 value
+const filtered = statuses.filter(item => item.value > 0);
+
+const chartData = {
+  labels: filtered.map(item => item.label),
+  datasets: [
+    {
+      data: filtered.map(item => item.value),
+      backgroundColor: filtered.map(item => item.color),
+      borderWidth: 1
+    }
+  ]
+};
+
 
   const options = {
     responsive: true,
@@ -94,7 +95,7 @@ const CustomerStatusPieChart = ({ startDate, endDate }) => {
         callbacks: {
           label: (context) => {
             const label = context.label || '';
-            const value = context.raw || 0;
+            const value = context.raw ;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percent = ((value / total) * 100).toFixed(1);
             return `${label}: ${value} (${percent}%)`;

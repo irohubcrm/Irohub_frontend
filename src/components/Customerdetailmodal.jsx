@@ -242,7 +242,16 @@ function Customerdetailmodal() {
       return;
     }
 
+    // Validate year range (4 digits max, reasonable range)
     const selectedDate = new Date(nextFollowupdate);
+    const year = selectedDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    if (year < 1900 || year > currentYear + 10) {
+      setdateerror("Year must be between 1900 and " + (currentYear + 10));
+      return;
+    }
+
     const today = new Date();
     selectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);

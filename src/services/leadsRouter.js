@@ -9,48 +9,6 @@ export const addleads = async (leadData) => {
   );
   return data;
 };
-// export const listleads = async (options) => {
-//   const {
-//     page = 1,
-//     priority,
-//     status,
-//     filterleads,
-//     assignedTo,
-//     searchText,
-//     date,
-//     startDate,
-//     endDate,
-//     sortBy,
-//     role,
-//     metadataUser
-//   } = options || {};
-
-//   const params = new URLSearchParams({ page });
-
-//   // ❌ Removed limit and noLimit logic completely
-
-//   if (priority && priority !== "Priority") params.append("priority", priority);
-//   if (status && status !== "Status") params.append("status", status);
-//   if (filterleads && filterleads !== "All") params.append("filterleads", filterleads);
-//   if (assignedTo && assignedTo !== "AssignedTo") params.append("assignedTo", assignedTo);
-//   if (searchText) params.append("searchText", searchText);
-//   if (date && date !== "Date") params.append("date", date);
-//   if (startDate) params.append("startDate", startDate);
-//   if (endDate) params.append("endDate", endDate);
-
-//   const user = metadataUser || JSON.parse(sessionStorage.getItem("metadataUser") || "{}");
-//   const endpoint = role === "Admin" ? "list-admin" : "list";
-
-//   const { data } = await axios.get(
-//     `${API_URL}/leads/${endpoint}?${params.toString()}`,
-//     getAuthorized()
-//   );
-
-//   console.log("Leads statuses:", data?.length);
-//   console.log("API Response:", data);
-
-//   return data;
-// };
 
 export const listleads = async (options) => {
     const { page = 1, limit = 10000, priority, status, filterleads, assignedTo,
@@ -63,8 +21,13 @@ export const listleads = async (options) => {
     params.append("noLimit", "true");
   } else {
     params.append("limit", limit); // Add limit if noLimit is false
-  }  if (priority && priority !== "Priority") params.append("priority", priority);
-  if (status && status !== "Status") params.append("status", status); // ← filtering
+  }
+  if (priority && priority !== "Priority") params.append("priority", priority);
+  if (status && Array.isArray(status) && status.length > 0) {
+    status.forEach(s => params.append("status", s));
+  } else if (status && status !== "Status") {
+    params.append("status", status);
+  }
   if (filterleads && filterleads !== "All") params.append("filterleads", filterleads);
   if (assignedTo && assignedTo !== "AssignedTo") params.append("assignedTo", assignedTo);
   if (searchText) params.append("searchText", searchText);
@@ -79,11 +42,6 @@ export const listleads = async (options) => {
     `${API_URL}/leads/${endpoint}?${params.toString()}`,
     getAuthorized()
   );
-
-  // CORRECT: Log the actual lead statuses, not the filter param
-  console.log("Leads statuses:", data?.length)
-  console.log("API Response:", data);
-
   return data;
 };
 export const assignleads = async ({ leadId, staffId, isAssigning }) => {
@@ -178,18 +136,7 @@ export const uploadbulkleads = async (leadData) => {
   );
   return data;
 };
-// export const getMonthlySummary = async ({ startDate, endDate }) => {
-//   const params = new URLSearchParams();
-//   if (startDate) params.append("startDate", startDate);
-//   if (endDate) params.append("endDate", endDate);
 
-//   const { data } = await axios.get(
-//     `${API_URL}/leads/monthly-summary?${params.toString()}`,
-//     getAuthorized()
-//   );
-//   console.log(data,"monthlyLEad data")
-//   return data;
-// };
 
 export const deletemultipleleads = async ({ leadIds }) => {
   const { data } = await axios.delete(`${API_URL}/leads/delete-multipleleads`, {

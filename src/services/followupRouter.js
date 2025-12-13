@@ -8,7 +8,7 @@ export const addFollowup = async ({ followupdata }) => {
     followupdata,
     getAuthorized()
   );
-  console.log("Follow-up created:", data);
+
   return data;
 };
 

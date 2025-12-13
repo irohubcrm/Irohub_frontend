@@ -1,17 +1,27 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 import { toggleViewtasksmodal } from '../redux/modalSlice'
 import { useDispatch, useSelector } from 'react-redux'
-import { listtask } from '../services/tasksRouter'
+import { listtask, deletetask } from '../services/tasksRouter'
 import Spinner from './Spinner'
+import { FaTrash } from 'react-icons/fa'
 
 function Viewtasksmodal() {
     const dispatch = useDispatch()
     const selectedstaffId = useSelector((state) => state.modal.selectedStaffsId)
+    const queryclient = useQueryClient()
 
     const listtasks = useQuery({
         queryKey: ['List tasks'],
         queryFn: listtask
+    })
+
+    const deletetaskmutation = useMutation({
+        mutationKey: ['Delete task'],
+        mutationFn: deletetask,
+        onSuccess: () => {
+            queryclient.invalidateQueries(['List tasks'])
+        }
     })
 
     const filteredtasks = listtasks?.data?.task?.filter((task) => task.assignedTo === selectedstaffId)
@@ -39,6 +49,7 @@ function Viewtasksmodal() {
                                     <th className="px-3 sm:px-6 py-3 sm:py-4">Deadline</th>
                                     <th className="px-3 sm:px-6 py-3 sm:py-4">Task Description</th>
                                     <th className="px-3 sm:px-6 py-3 sm:py-4">Status</th>
+                                    <th className="px-3 sm:px-6 py-3 sm:py-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -57,6 +68,15 @@ function Viewtasksmodal() {
                                         </td>
                                         <td className="px-3 sm:px-6 py-3 sm:py-5">{task.description || "N/A"}</td>
                                         <td className="px-3 sm:px-6 py-3 sm:py-5">{task.status}</td>
+                                        <td className="px-3 sm:px-6 py-3 sm:py-5">
+                                            <button
+                                                onClick={() => deletetaskmutation.mutate(task._id)}
+                                                className="text-red-500 hover:text-red-700 transition"
+                                                title="Delete Task"
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
